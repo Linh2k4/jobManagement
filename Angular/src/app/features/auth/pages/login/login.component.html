@@ -1,51 +1,92 @@
-<div class="login-container">
-  <div class="login-card">
-    <h1>Job Management System</h1>
-    <p class="subtitle">Sign in to your account</p>
+<div class="login-page">
+  <!-- Soft floating ambient shapes for sky-blue atmosphere -->
+  <div class="ambient-shape shape-1"></div>
+  <div class="ambient-shape shape-2"></div>
+  <div class="ambient-shape shape-3"></div>
 
-    <form [formGroup]="form" (ngSubmit)="onSubmit()">
-      <mat-form-field appearance="outline" class="full-width">
-        <mat-label>Email</mat-label>
-        <input matInput formControlName="email" type="email" placeholder="admin&#64;company.com">
-        <mat-error>{{ emailError }}</mat-error>
-      </mat-form-field>
+  <div class="login-card-wrapper animate-fade-in">
+    <div class="login-card">
+      <div class="brand-header">
+        <div class="brand-badge">
+          <span class="icon">cloud_sync</span>
+        </div>
+        <h1>JobManagement</h1>
+        <p class="subtitle">Hệ thống quản lý công việc & đánh giá KPI</p>
+      </div>
 
-      <mat-form-field appearance="outline" class="full-width">
-        <mat-label>Password</mat-label>
-        <input
-          matInput
-          formControlName="password"
-          [type]="hidePassword() ? 'password' : 'text'"
-          placeholder="Enter password">
+      <form [formGroup]="form" (ngSubmit)="onSubmit()" class="login-form">
+        <div class="form-group">
+          <label for="email">Email</label>
+          <div class="input-wrapper">
+            <span class="icon input-icon">mail</span>
+            <input
+              id="email"
+              formControlName="email"
+              type="email"
+              placeholder="admin@company.com"
+              autocomplete="email"
+            />
+          </div>
+          <span class="error-text" *ngIf="form.get('email')?.touched && emailError">
+            {{ emailError }}
+          </span>
+        </div>
+
+        <div class="form-group">
+          <label for="password">Mật khẩu</label>
+          <div class="input-wrapper">
+            <span class="icon input-icon">lock</span>
+            <input
+              id="password"
+              formControlName="password"
+              [type]="hidePassword() ? 'password' : 'text'"
+              placeholder="••••••••"
+              autocomplete="current-password"
+            />
+            <button
+              type="button"
+              class="btn-toggle-pw"
+              (click)="togglePasswordVisibility()"
+              aria-label="Ẩn/hiện mật khẩu"
+            >
+              <span class="icon">{{ hidePassword() ? 'visibility_off' : 'visibility' }}</span>
+            </button>
+          </div>
+          <span class="error-text" *ngIf="form.get('password')?.touched && passwordError">
+            {{ passwordError }}
+          </span>
+        </div>
+
         <button
-          mat-icon-button
-          matSuffix
-          (click)="togglePasswordVisibility()"
-          type="button"
-          aria-label="Toggle password visibility"
-          [attr.aria-pressed]="hidePassword()">
-          <mat-icon>{{ hidePassword() ? 'visibility_off' : 'visibility' }}</mat-icon>
+          type="submit"
+          class="btn btn-primary btn-submit"
+          [disabled]="form.invalid || loading()"
+        >
+          <span class="icon spinner" *ngIf="loading()">sync</span>
+          <span>{{ loading() ? 'Đang đăng nhập...' : 'Đăng nhập' }}</span>
+          <span class="icon" *ngIf="!loading()">arrow_forward</span>
         </button>
-        <mat-error>{{ passwordError }}</mat-error>
-      </mat-form-field>
+      </form>
 
-      <button
-        mat-raised-button
-        color="primary"
-        class="full-width"
-        [disabled]="form.invalid || loading()">
-        <mat-spinner *ngIf="loading()" diameter="20" class="spinner"></mat-spinner>
-        <span *ngIf="!loading()">Sign In</span>
-      </button>
-    </form>
-
-    <div class="test-credentials">
-      <p>Test Accounts:</p>
-      <ul>
-        <li><strong>Manager:</strong> admin&#64;company.com / admin123</li>
-        <li><strong>Lead:</strong> lead1&#64;company.com / admin123</li>
-        <li><strong>Member:</strong> member1&#64;company.com / admin123</li>
-      </ul>
+      <div class="quick-accounts">
+        <div class="quick-title">
+          <span>Chọn tài khoản mẫu (Click để điền)</span>
+        </div>
+        <div class="account-chips">
+          <button type="button" class="account-chip" (click)="fillAccount('admin@company.com')">
+            <span class="chip-role role-admin">Admin</span>
+            <span class="chip-email">admin&#64;company.com</span>
+          </button>
+          <button type="button" class="account-chip" (click)="fillAccount('lead1@company.com')">
+            <span class="chip-role role-lead">Lead</span>
+            <span class="chip-email">lead1&#64;company.com</span>
+          </button>
+          <button type="button" class="account-chip" (click)="fillAccount('member1@company.com')">
+            <span class="chip-role role-member">Member</span>
+            <span class="chip-email">member1&#64;company.com</span>
+          </button>
+        </div>
+      </div>
     </div>
   </div>
 </div>

@@ -18,150 +18,408 @@ import { AuthStore } from '../../../../core/stores/auth.store';
   standalone: true,
   imports: [CommonModule, FormsModule, KpiCardComponent],
   template: `
-    <div class="kpi-dashboard-container">
-      <div class="dashboard-header">
-        <h2>KPI Dashboard</h2>
+    <div class="kpi-dashboard-container animate-fade-in">
+      <!-- HEADER -->
+      <div class="page-header">
+        <div>
+          <h1 class="page-title">KPI Dashboard</h1>
+          <p class="page-subtitle">Tổng quan chỉ số hiệu suất cá nhân và toàn đội ngũ</p>
+        </div>
         <div class="header-actions">
-          <button (click)="refreshKPI()" class="btn-refresh"><span class="icon">refresh</span> Refresh</button>
-          <select [(ngModel)]="selectedPeriod" (change)="onPeriodChange()" class="period-select">
-            <option value="CURRENT">Current Period</option>
-            <option value="PREVIOUS">Previous Period</option>
-            <option value="YEAR_TO_DATE">Year to Date</option>
-          </select>
-        </div>
-      </div>
-
-      <div class="kpi-section" *ngIf="!(isLoading$ | async)">
-        <h3>Your KPI</h3>
-        <div class="kpi-grid" *ngIf="currentKPI$ | async as kpi">
-          <app-kpi-card
-            title="Weighted Completion Rate"
-            [value]="kpi.wcr || 0"
-            unit="%"
-            [trend]="kpi.percentageChange || 0"
-            period="This Month"
-            [target]="85"
-            [maxValue]="100"
-            type="PERFORMANCE"
-          ></app-kpi-card>
-
-          <app-kpi-card
-            title="Volume Index"
-            [value]="kpi.vi || 0"
-            unit="%"
-            period="This Month"
-            [target]="100"
-            [maxValue]="120"
-            type="PRODUCTIVITY"
-          ></app-kpi-card>
-
-          <app-kpi-card
-            title="Estimate Accuracy"
-            [value]="kpi.ea || 0"
-            unit="%"
-            period="This Month"
-            [target]="90"
-            [maxValue]="100"
-            type="EFFICIENCY"
-          ></app-kpi-card>
-
-          <app-kpi-card
-            title="KPI Final"
-            [value]="kpi.kpiFinal || 0"
-            [unit]="' — ' + kpi.ranking"
-            period="This Month"
-            [target]="80"
-            [maxValue]="100"
-            type="QUALITY"
-          ></app-kpi-card>
-        </div>
-      </div>
-
-      <div class="kpi-section" *ngIf="!(isLoading$ | async)">
-        <h3>Team KPI Summary</h3>
-        <div class="team-summary" *ngIf="teamKpiSummary$ | async as teamKpi">
-          <div class="summary-card">
-            <span class="icon summary-icon">group</span>
-            <span class="summary-label">Team Members</span>
-            <span class="summary-value">{{ teamKpi.totalMembers }}</span>
-          </div>
-          <div class="summary-card">
-            <span class="icon summary-icon">insights</span>
-            <span class="summary-label">Avg KPI Final</span>
-            <span class="summary-value">{{ teamKpi.avgKpiFinal | number: '1.0-1' }}</span>
-          </div>
-          <div class="summary-card">
-            <span class="icon summary-icon">bar_chart</span>
-            <span class="summary-label">Avg WCR</span>
-            <span class="summary-value">{{ teamKpi.avgWcr | number: '1.0-1' }}%</span>
-          </div>
-          <div class="summary-card" [class.summary-card--alert]="teamKpi.needsImprovementCount > 0">
-            <span class="icon summary-icon">priority_high</span>
-            <span class="summary-label">Needs Improvement</span>
-            <span class="summary-value">{{ teamKpi.needsImprovementCount }}</span>
+          <button (click)="refreshKPI()" class="btn btn-secondary btn-sm">
+            <span class="icon">refresh</span> Làm mới
+          </button>
+          <div class="period-select-wrapper">
+            <select [(ngModel)]="selectedPeriod" (change)="onPeriodChange()" class="period-select">
+              <option value="CURRENT">Kỳ hiện tại</option>
+              <option value="PREVIOUS">Kỳ trước</option>
+              <option value="YEAR_TO_DATE">Từ đầu năm</option>
+            </select>
           </div>
         </div>
       </div>
 
-      <div class="kpi-section" *ngIf="!(isLoading$ | async)">
-        <h3>KPI Trend</h3>
-        <div class="trend-container" *ngIf="kpiTrend$ | async as trend">
-          <div class="trend-bars">
-            <div class="trend-bar-col">
-              <div class="trend-bar-track">
-                <div class="trend-bar prev" [style.height.%]="barHeight(trend.previous)"></div>
-              </div>
-              <span class="trend-bar-value">{{ trend.previous | number: '1.0-1' }}</span>
-              <span class="trend-bar-label">Kỳ trước</span>
-            </div>
-            <div class="trend-bar-col">
-              <div class="trend-bar-track">
-                <div class="trend-bar current" [ngClass]="trend.change >= 0 ? 'up' : 'down'" [style.height.%]="barHeight(trend.current)"></div>
-              </div>
-              <span class="trend-bar-value">{{ trend.current | number: '1.0-1' }}</span>
-              <span class="trend-bar-label">Kỳ này</span>
+      <!-- LOADING -->
+      <div *ngIf="isLoading$ | async" class="state-card">
+        <div class="spinner"></div>
+        <p>Đang tải dữ liệu KPI...</p>
+      </div>
+
+      <div class="dashboard-content" *ngIf="!(isLoading$ | async)">
+        <!-- MY KPI SECTION -->
+        <div class="kpi-section">
+          <div class="section-header">
+            <div class="section-title-box">
+              <span class="icon section-icon">person</span>
+              <h3>KPI Cá Nhân Của Bạn</h3>
             </div>
           </div>
-          <div class="trend-change" [ngClass]="trend.change >= 0 ? 'positive' : 'negative'">
-            <span class="icon">{{ trend.change >= 0 ? 'trending_up' : 'trending_down' }}</span>
-            {{ Math.abs(trend.percentageChange) | number: '1.0-2' }}% so với kỳ trước
+          <div class="kpi-grid" *ngIf="currentKPI$ | async as kpi">
+            <app-kpi-card
+              title="Weighted Completion Rate"
+              [value]="kpi.wcr || 0"
+              unit="%"
+              [trend]="kpi.percentageChange || 0"
+              period="Kỳ này"
+              [target]="85"
+              [maxValue]="100"
+              type="PERFORMANCE"
+            ></app-kpi-card>
+
+            <app-kpi-card
+              title="Volume Index"
+              [value]="kpi.vi || 0"
+              unit="%"
+              period="Kỳ này"
+              [target]="100"
+              [maxValue]="120"
+              type="PRODUCTIVITY"
+            ></app-kpi-card>
+
+            <app-kpi-card
+              title="Estimate Accuracy"
+              [value]="kpi.ea || 0"
+              unit="%"
+              period="Kỳ này"
+              [target]="90"
+              [maxValue]="100"
+              type="EFFICIENCY"
+            ></app-kpi-card>
+
+            <app-kpi-card
+              title="KPI Final"
+              [value]="kpi.kpiFinal || 0"
+              [unit]="' — ' + kpi.ranking"
+              period="Kỳ này"
+              [target]="80"
+              [maxValue]="100"
+              type="QUALITY"
+            ></app-kpi-card>
+          </div>
+        </div>
+
+        <!-- TEAM SUMMARY & TRENDS (2 COLUMNS) -->
+        <div class="analytics-row">
+          <!-- TEAM KPI -->
+          <div class="kpi-section col">
+            <div class="section-header">
+              <div class="section-title-box">
+                <span class="icon section-icon">groups</span>
+                <h3>Tổng Hợp Nhóm</h3>
+              </div>
+            </div>
+            <div class="team-summary" *ngIf="teamKpiSummary$ | async as teamKpi">
+              <div class="summary-card">
+                <div class="summary-icon sky"><span class="icon">group</span></div>
+                <div class="summary-info">
+                  <span class="summary-value">{{ teamKpi.totalMembers }}</span>
+                  <span class="summary-label">Tổng thành viên</span>
+                </div>
+              </div>
+              <div class="summary-card">
+                <div class="summary-icon blue"><span class="icon">insights</span></div>
+                <div class="summary-info">
+                  <span class="summary-value">{{ teamKpi.avgKpiFinal | number: '1.0-1' }}</span>
+                  <span class="summary-label">KPI Final trung bình</span>
+                </div>
+              </div>
+              <div class="summary-card">
+                <div class="summary-icon emerald"><span class="icon">bar_chart</span></div>
+                <div class="summary-info">
+                  <span class="summary-value">{{ teamKpi.avgWcr | number: '1.0-1' }}%</span>
+                  <span class="summary-label">WCR trung bình</span>
+                </div>
+              </div>
+              <div class="summary-card" [class.summary-card--alert]="teamKpi.needsImprovementCount > 0">
+                <div class="summary-icon rose"><span class="icon">priority_high</span></div>
+                <div class="summary-info">
+                  <span class="summary-value" [class.danger-text]="teamKpi.needsImprovementCount > 0">{{ teamKpi.needsImprovementCount }}</span>
+                  <span class="summary-label">Cần cải thiện (&lt;60)</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- TREND -->
+          <div class="kpi-section col">
+            <div class="section-header">
+              <div class="section-title-box">
+                <span class="icon section-icon">show_chart</span>
+                <h3>Xu Hướng KPI</h3>
+              </div>
+            </div>
+            <div class="trend-card" *ngIf="kpiTrend$ | async as trend">
+              <div class="trend-bars">
+                <div class="trend-bar-col">
+                  <span class="trend-bar-value">{{ trend.previous | number: '1.0-1' }}</span>
+                  <div class="trend-bar-track">
+                    <div class="trend-bar prev" [style.height.%]="barHeight(trend.previous)"></div>
+                  </div>
+                  <span class="trend-bar-label">Kỳ trước</span>
+                </div>
+                <div class="trend-bar-col">
+                  <span class="trend-bar-value">{{ trend.current | number: '1.0-1' }}</span>
+                  <div class="trend-bar-track">
+                    <div class="trend-bar current" [ngClass]="trend.change >= 0 ? 'up' : 'down'" [style.height.%]="barHeight(trend.current)"></div>
+                  </div>
+                  <span class="trend-bar-label">Kỳ này</span>
+                </div>
+              </div>
+              <div class="trend-footer">
+                <div class="trend-change-pill" [ngClass]="trend.change >= 0 ? 'positive' : 'negative'">
+                  <span class="icon">{{ trend.change >= 0 ? 'trending_up' : 'trending_down' }}</span>
+                  {{ trend.change >= 0 ? '+' : '' }}{{ Math.abs(trend.percentageChange) | number: '1.0-2' }}% so với kỳ trước
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
-
-      <div *ngIf="isLoading$ | async" class="loading">Loading KPI data...</div>
     </div>
   `,
   styles: [`
-    .kpi-dashboard-container { padding: 20px; }
-    .dashboard-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; }
-    .header-actions { display: flex; gap: 15px; align-items: center; }
-    .btn-refresh { padding: 8px 16px; background: #2563eb; color: white; border: none; border-radius: 10px; cursor: pointer; }
-    .period-select { padding: 8px 12px; border: 1px solid #ddd; border-radius: 10px; }
-    .kpi-section { margin-bottom: 40px; }
-    .kpi-section h3 { margin: 0 0 20px 0; color: #333; }
-    .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; }
-    .team-summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; }
-    .summary-card { background: white; border: 1px solid #ddd; border-radius: 16px; padding: 15px; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 4px; }
-    .summary-card--alert { border-color: #fecaca; background: #fef2f2; }
-    .summary-icon { font-size: 22px; color: var(--color-primary, #2563eb); margin-bottom: 2px; }
-    .summary-card--alert .summary-icon { color: #ef4444; }
-    .summary-label { display: block; color: #666; font-size: 12px; }
-    .summary-value { display: block; font-size: 20px; font-weight: bold; color: #333; }
-    .trend-container { background: white; border: 1px solid #ddd; border-radius: 16px; padding: 24px; }
-    .trend-bars { display: flex; justify-content: center; align-items: flex-end; gap: 40px; height: 140px; margin-bottom: 20px; }
-    .trend-bar-col { display: flex; flex-direction: column; align-items: center; height: 100%; justify-content: flex-end; gap: 6px; }
-    .trend-bar-track { width: 48px; height: 100px; background: #f1f5f9; border-radius: 8px; display: flex; align-items: flex-end; overflow: hidden; }
-    .trend-bar { width: 100%; border-radius: 8px 8px 0 0; transition: height 0.4s ease; min-height: 4px; }
-    .trend-bar.prev { background: #cbd5e1; }
-    .trend-bar.current.up { background: #22c55e; }
-    .trend-bar.current.down { background: #ef4444; }
-    .trend-bar-value { font-size: 14px; font-weight: 700; color: #333; }
-    .trend-bar-label { font-size: 11px; color: #999; }
-    .trend-change { display: flex; align-items: center; justify-content: center; gap: 6px; font-weight: bold; }
-    .trend-change.positive { color: #4CAF50; }
-    .trend-change.negative { color: #F44336; }
-    .loading { text-align: center; color: #2563eb; padding: 40px; }
+    .kpi-dashboard-container {
+      max-width: 1300px;
+      margin: 0 auto;
+    }
+
+    .page-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 24px;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+    .page-title {
+      font-size: 26px;
+      font-weight: 800;
+      color: var(--color-text);
+      margin: 0 0 4px 0;
+      letter-spacing: -0.02em;
+    }
+    .page-subtitle {
+      color: var(--color-text-muted);
+      font-size: 14px;
+      margin: 0;
+    }
+
+    .header-actions {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+    }
+    .period-select-wrapper {
+      width: 180px;
+    }
+    .period-select {
+      background: #ffffff;
+      padding: 8px 12px;
+      border: 1.5px solid var(--color-border);
+      border-radius: var(--radius-sm);
+      font-weight: 600;
+      color: var(--color-text);
+    }
+
+    .section-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+    }
+    .section-title-box {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .section-icon {
+      color: var(--color-primary);
+      font-size: 22px;
+    }
+    .section-title-box h3 {
+      margin: 0;
+      font-size: 16px;
+      font-weight: 800;
+      color: var(--color-text);
+    }
+
+    .kpi-section {
+      margin-bottom: 28px;
+    }
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 16px;
+    }
+
+    .analytics-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+    }
+    @media (max-width: 900px) {
+      .analytics-row { grid-template-columns: 1fr; }
+    }
+
+    /* TEAM SUMMARY */
+    .team-summary {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+    }
+    .summary-card {
+      background: #ffffff;
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-md);
+      padding: 16px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      box-shadow: var(--shadow-sm);
+      transition: all 0.2s ease;
+    }
+    .summary-card:hover {
+      transform: translateY(-2px);
+      box-shadow: var(--shadow-md);
+      border-color: var(--color-primary-border);
+    }
+    .summary-card--alert {
+      border-color: #fecdd3;
+      background: #fff8f8;
+    }
+    .summary-icon {
+      width: 42px;
+      height: 42px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+    .summary-icon.sky { background: #e0f2fe; color: #0284c7; }
+    .summary-icon.blue { background: #dbeafe; color: #2563eb; }
+    .summary-icon.emerald { background: #dcfce7; color: #059669; }
+    .summary-icon.rose { background: #ffe4e6; color: #e11d48; }
+
+    .summary-info {
+      display: flex;
+      flex-direction: column;
+    }
+    .summary-value {
+      font-size: 20px;
+      font-weight: 800;
+      color: var(--color-text);
+      line-height: 1.2;
+    }
+    .summary-label {
+      font-size: 11.5px;
+      color: var(--color-text-muted);
+      font-weight: 600;
+    }
+    .danger-text { color: #e11d48; }
+
+    /* TREND CARD */
+    .trend-card {
+      background: #ffffff;
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-md);
+      padding: 20px;
+      box-shadow: var(--shadow-sm);
+      display: flex;
+      flex-direction: column;
+      height: calc(100% - 38px);
+      justify-content: space-between;
+    }
+    .trend-bars {
+      display: flex;
+      justify-content: center;
+      align-items: flex-end;
+      gap: 48px;
+      height: 120px;
+      padding: 10px 0;
+    }
+    .trend-bar-col {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      height: 100%;
+      justify-content: flex-end;
+      gap: 6px;
+    }
+    .trend-bar-track {
+      width: 44px;
+      height: 80px;
+      background: #f1f5f9;
+      border-radius: 8px;
+      display: flex;
+      align-items: flex-end;
+      overflow: hidden;
+    }
+    .trend-bar {
+      width: 100%;
+      border-radius: 6px 6px 0 0;
+      transition: height 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+      min-height: 4px;
+    }
+    .trend-bar.prev { background: #94a3b8; }
+    .trend-bar.current.up { background: #059669; }
+    .trend-bar.current.down { background: #e11d48; }
+
+    .trend-bar-value {
+      font-size: 13px;
+      font-weight: 800;
+      color: var(--color-text);
+    }
+    .trend-bar-label {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--color-text-muted);
+    }
+
+    .trend-footer {
+      display: flex;
+      justify-content: center;
+      padding-top: 14px;
+      border-top: 1px solid var(--color-border);
+    }
+    .trend-change-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      font-weight: 800;
+      padding: 4px 14px;
+      border-radius: 999px;
+    }
+    .trend-change-pill.positive {
+      color: #059669;
+      background: #ecfdf5;
+      border: 1px solid #a7f3d0;
+    }
+    .trend-change-pill.negative {
+      color: #e11d48;
+      background: #fff1f2;
+      border: 1px solid #fecdd3;
+    }
+
+    /* SPINNER */
+    .state-card {
+      background: #ffffff;
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-md);
+      padding: 48px;
+      text-align: center;
+    }
+    .spinner {
+      width: 36px;
+      height: 36px;
+      border: 3px solid #e0f2fe;
+      border-top-color: var(--color-primary);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      margin: 0 auto 12px auto;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
   `]
 })
 export class KpiDashboardComponent implements OnInit {
@@ -201,7 +459,6 @@ export class KpiDashboardComponent implements OnInit {
     this.refreshKPI();
   }
 
-  /** Bar height as % of the larger of the two values, so the taller bar always fills the track. */
   barHeight(value: number): number {
     return Math.max(4, Math.min(100, value));
   }
