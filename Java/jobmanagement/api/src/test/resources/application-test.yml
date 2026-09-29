@@ -1,0 +1,21 @@
+# Points at the real local dev Postgres (docker container "memory-postgres", db "jobmanagement")
+# used by manual dev testing — see Java/JobManagement/api/src/main/resources/application-local.yml.
+spring:
+  datasource:
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5433}/${DB_NAME:jobmanagement}
+    username: ${DB_USER:postgres}
+    password: ${DB_PASSWORD:MyStrongPass123}
+    driver-class-name: org.postgresql.Driver
+  liquibase:
+    contexts: dev
+  jpa:
+    show-sql: false
+
+jwt:
+  secret: ${JWT_SECRET:bZaZU_WpZYuV-bgoiC4oXWogfFgODOqaLmBFh4DsUpfTFosV2OZ_x-7Yegj0xFHMcrMVNoIwPCL_02eLug6F6w}
+  expiration-ms: 3600000
+  refresh-expiration-ms: 604800000
+
+logging:
+  level:
+    com.company.jobmanagement: INFO

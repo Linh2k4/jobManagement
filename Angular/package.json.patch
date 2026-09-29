@@ -1,0 +1,15 @@
+# Add these scripts to package.json "scripts" section:
+
+"scripts": {
+  "ng": "ng",
+  "start": "ng serve",
+  "build": "ng build",
+  "watch": "ng build --watch --configuration development",
+  "test": "ng test",
+  "generate-api": "bash generate-api-client.sh",
+  "generate-api-prod": "API_URL=https://api.jobmanagement.com bash generate-api-client.sh"
+}
+
+# After updating package.json, you can run:
+# npm run generate-api
+# npm start

@@ -1,0 +1,168 @@
+services:
+
+  # ============================================================
+  # 1. PostgreSQL Database
+  # ============================================================
+  postgres:
+    image: postgres:16-alpine
+    container_name: job-management-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: job_management
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
+      POSTGRES_INITDB_ARGS: "--encoding=UTF8"
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d job_management"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - job-management-network
+
+  # ============================================================
+  # 2. Redis Cache
+  # ============================================================
+  redis:
+    image: redis:7-alpine
+    container_name: job-management-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+    networks:
+      - job-management-network
+
+  # ============================================================
+  # 3. MinIO Object Storage (S3 Compatible)
+  # ============================================================
+  minio:
+    image: quay.io/minio/minio:latest
+    container_name: job-management-minio
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio-data:/data
+    networks:
+      - job-management-network
+
+  # Auto create default bucket for Job Management
+  minio-init:
+    image: quay.io/minio/mc:latest
+    container_name: job-management-minio-init
+    depends_on:
+      - minio
+    entrypoint: >
+      /bin/sh -c "
+      sleep 3;
+      /usr/bin/mc alias set myminio http://minio:9000 minioadmin minioadmin;
+      /usr/bin/mc mb myminio/job-management || true;
+      exit 0;
+      "
+    networks:
+      - job-management-network
+
+  # ============================================================
+  # 4. Mailpit (Mock SMTP server & Web UI)
+  # ============================================================
+  mailpit:
+    image: axllent/mailpit:latest
+    container_name: job-management-mailpit
+    restart: unless-stopped
+    ports:
+      - "1025:1025" # SMTP port
+      - "8025:8025" # Web UI
+    networks:
+      - job-management-network
+
+  # ============================================================
+  # 5. Backend API (Spring Boot)
+  # ============================================================
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: job-management-api
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: job_management
+      DB_USER: postgres
+      DB_PASSWORD: ${DB_PASSWORD:-postgres}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      MINIO_ENDPOINT: http://minio:9000
+      MINIO_ACCESS_KEY: minioadmin
+      MINIO_SECRET_KEY: minioadmin
+      MINIO_BUCKET: job-management
+      MAIL_HOST: mailpit
+      MAIL_PORT: 1025
+      JWT_SECRET: ${JWT_SECRET:-bZaZU_WpZYuV-bgoiC4oXWogfFgODOqaLmBFh4DsUpfTFosV2OZ_x-7Yegj0xFHMcrMVNoIwPCL_02eLug6F6w}
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost,http://localhost:80,http://localhost:4200,http://localhost:8080}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_started
+      mailpit:
+        condition: service_started
+    networks:
+      - job-management-network
+
+  # ============================================================
+  # 6. Frontend UI (Angular 18 + Nginx)
+  # ============================================================
+  frontend:
+    build:
+      context: ../../Angular
+      dockerfile: Dockerfile
+    container_name: job-management-frontend
+    restart: unless-stopped
+    ports:
+      - "4200:80"
+    depends_on:
+      - backend
+    networks:
+      - job-management-network
+
+# ============================================================
+# Volumes
+# ============================================================
+volumes:
+  postgres-data:
+    driver: local
+  redis-data:
+    driver: local
+  minio-data:
+    driver: local
+
+# ============================================================
+# Networks
+# ============================================================
+networks:
+  job-management-network:
+    driver: bridge

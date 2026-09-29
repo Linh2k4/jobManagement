@@ -1,0 +1,5 @@
+# Generated API client from Swagger
+# Regenerate with: ./generate-api-client.sh
+/src/app/core/generated-api/
+**/models/api*.ts
+**/services/*.service.ts

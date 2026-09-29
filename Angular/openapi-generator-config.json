@@ -1,0 +1,14 @@
+{
+  "generatorName": "typescript-angular",
+  "inputSpec": "http://localhost:8080/v3/api-docs",
+  "outputDir": "./src/app/core/generated-api",
+  "additionalProperties": {
+    "ngVersion": "18.0.0",
+    "apiModulePrefix": "Api",
+    "withInterfaces": true
+  },
+  "typeMappings": {
+    "LocalDate": "string",
+    "ZonedDateTime": "string"
+  }
+}

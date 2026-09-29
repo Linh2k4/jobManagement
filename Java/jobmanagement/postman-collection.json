@@ -1,0 +1,318 @@
+{
+  "info": {
+    "name": "Job Management API",
+    "description": "Complete REST API collection for Job Management System",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{jwt_token}}",
+        "type": "string"
+      }
+    ]
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:8080"
+    },
+    {
+      "key": "jwt_token",
+      "value": ""
+    }
+  ],
+  "item": [
+    {
+      "name": "Authentication",
+      "item": [
+        {
+          "name": "Login",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"user@example.com\",\n  \"password\": \"password123\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/auth/login",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "auth", "login"]
+            }
+          }
+        },
+        {
+          "name": "Refresh Token",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refreshToken\": \"{{refresh_token}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/auth/refresh",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "auth", "refresh"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Tasks",
+      "item": [
+        {
+          "name": "Get All Tasks",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/tasks?page=0&size=10",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "tasks"],
+              "query": [
+                {"key": "page", "value": "0"},
+                {"key": "size", "value": "10"}
+              ]
+            }
+          }
+        },
+        {
+          "name": "Create Task",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"New Task\",\n  \"description\": \"Task description\",\n  \"taskTypeId\": 1,\n  \"dueDate\": \"2026-07-31\",\n  \"priority\": \"HIGH\",\n  \"section\": \"Development\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/tasks",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "tasks"]
+            }
+          }
+        },
+        {
+          "name": "Bulk Update Status",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"taskIds\": [1, 2, 3],\n  \"newStatus\": \"COMPLETED\",\n  \"reason\": \"All tasks completed successfully\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/tasks/bulk/status",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "tasks", "bulk", "status"]
+            }
+          }
+        },
+        {
+          "name": "Bulk Assign Tasks",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"taskIds\": [1, 2, 3],\n  \"assigneeId\": 5,\n  \"notes\": \"Assigned to team lead for review\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/tasks/bulk/assign",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "tasks", "bulk", "assign"]
+            }
+          }
+        },
+        {
+          "name": "Advanced Search",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"keyword\": \"bug\",\n  \"status\": \"IN_PROGRESS\",\n  \"priority\": \"HIGH\",\n  \"dueDateFrom\": \"2026-07-01\",\n  \"dueDateTo\": \"2026-07-31\",\n  \"isOverdue\": true\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/tasks/search/advanced",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "tasks", "search", "advanced"]
+            }
+          }
+        },
+        {
+          "name": "Get Task by ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/tasks/1",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "tasks", "1"]
+            }
+          }
+        },
+        {
+          "name": "Update Task",
+          "request": {
+            "method": "PUT",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Updated Task Title\",\n  \"description\": \"Updated description\",\n  \"priority\": \"MEDIUM\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/tasks/1",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "tasks", "1"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Dashboard & Reports",
+      "item": [
+        {
+          "name": "Get KPI Report",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/dashboard/report/kpi?period=2026-07",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "dashboard", "report", "kpi"],
+              "query": [
+                {"key": "period", "value": "2026-07"}
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Team KPI Report",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/dashboard/report/team?period=2026-07",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "dashboard", "report", "team"],
+              "query": [
+                {"key": "period", "value": "2026-07"}
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Team Comparison",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/dashboard/report/comparison?period=2026-07",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "dashboard", "report", "comparison"],
+              "query": [
+                {"key": "period", "value": "2026-07"}
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "WebSocket Notifications",
+      "item": [
+        {
+          "name": "Connect to Notifications",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "description": "Connect WebSocket to /ws/notifications (SockJS + STOMP)",
+            "url": {
+              "raw": "ws://localhost:8080/ws/notifications",
+              "protocol": "ws",
+              "host": ["localhost"],
+              "port": "8080",
+              "path": ["ws", "notifications"]
+            }
+          }
+        },
+        {
+          "name": "Subscribe to User Notifications",
+          "request": {
+            "method": "SUBSCRIBE",
+            "header": [],
+            "description": "STOMP: SUBSCRIBE to /queue/user-{userId}",
+            "body": {
+              "mode": "raw",
+              "raw": "SUBSCRIBE /queue/user-1 id:1 receipt:1\n\n"
+            }
+          }
+        },
+        {
+          "name": "Subscribe to Team Notifications",
+          "request": {
+            "method": "SUBSCRIBE",
+            "header": [],
+            "description": "STOMP: SUBSCRIBE to /topic/team-{leadId}",
+            "body": {
+              "mode": "raw",
+              "raw": "SUBSCRIBE /topic/team-1 id:2 receipt:2\n\n"
+            }
+          }
+        },
+        {
+          "name": "Subscribe to System Notifications",
+          "request": {
+            "method": "SUBSCRIBE",
+            "header": [],
+            "description": "STOMP: SUBSCRIBE to /topic/system",
+            "body": {
+              "mode": "raw",
+              "raw": "SUBSCRIBE /topic/system id:3 receipt:3\n\n"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Users",
+      "item": [
+        {
+          "name": "Get All Users",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/users?page=0&size=10",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "users"],
+              "query": [
+                {"key": "page", "value": "0"},
+                {"key": "size", "value": "10"}
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get User Profile",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/users/profile",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "users", "profile"]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

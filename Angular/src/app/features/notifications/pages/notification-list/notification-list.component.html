@@ -1,0 +1,31 @@
+<div class="notification-list-container">
+  <div class="header">
+    <div>
+      <h2>Notifications</h2>
+      <p>Manage your reminders and notifications</p>
+    </div>
+    <button
+      *ngIf="notifications().length > 0"
+      class="btn-mark-all"
+      (click)="onMarkAllAsRead()"
+    >
+      Đánh dấu tất cả đã đọc
+    </button>
+  </div>
+
+  <div *ngIf="loading()" class="loading">Đang tải...</div>
+  <div *ngIf="error()" class="error">{{ error() }}</div>
+
+  <div *ngIf="!loading() && !error()">
+    <div *ngIf="notifications().length === 0" class="empty">Không có thông báo nào.</div>
+
+    <div class="notification-items">
+      <app-notification-item
+        *ngFor="let notification of notifications()"
+        [notification]="notification"
+        (markAsRead)="onMarkAsRead($event)"
+        (delete)="onDelete($event)"
+      ></app-notification-item>
+    </div>
+  </div>
+</div>

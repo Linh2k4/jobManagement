@@ -1,0 +1,52 @@
+# Maven
+target/
+*.jar
+*.war
+*.ear
+pom.xml.tag
+pom.xml.releaseBackup
+pom.xml.versionsBackup
+pom.xml.next
+release.properties
+dependency-reduced-pom.xml
+.flattened-pom.xml
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Gradle
+.gradle/
+build/
+
+# Spring Boot
+.m2/
+.classpath
+.project
+.settings/
+.springBeans
+.sts4-cache/
+
+# Log files
+*.log
+logs/
+
+# Redis persistence dump (created by local redis-server runs)
+dump.rdb
+
+# Environment
+.env
+.env.local
+application-local.yml
+
+# Docker
+.docker/
+docker-compose.override.yml
+
+# OS
+.DS_Store
+Thumbs.db

@@ -1,0 +1,157 @@
+/* You can add global styles to this file, and also import other style files */
+
+:root {
+  /* Brand */
+  --color-primary: #2563eb;
+  --color-primary-hover: #1d4ed8;
+  --color-primary-light: #eff6ff;
+
+  /* Sidebar chrome — dark blue, distinct from the bright white content area */
+  --color-sidebar-bg: #1e3a8a;
+  --color-sidebar-text: #dbeafe;
+  --color-sidebar-text-muted: #93c5fd;
+  --color-sidebar-hover: #1d4ed8;
+  --color-sidebar-active-bg: #2563eb;
+
+  /* Surfaces — bright, white-first theme */
+  --color-bg: #f7f8fa;
+  --color-surface: #ffffff;
+  --color-surface-hover: #f5f6f8;
+  --color-border: #e5e7eb;
+
+  /* Text */
+  --color-text: #1f2430;
+  --color-text-muted: #6b7280;
+  --color-text-inverse: #ffffff;
+
+  /* Status */
+  --color-success: #16a34a;
+  --color-success-bg: #dcfce7;
+  --color-warning: #d97706;
+  --color-warning-bg: #fef3c7;
+  --color-danger: #dc2626;
+  --color-danger-bg: #fee2e2;
+  --color-info: #2563eb;
+  --color-info-bg: #dbeafe;
+
+  /* Layout — generous rounding for a softer, more modern feel */
+  --radius-sm: 10px;
+  --radius-md: 16px;
+  --radius-lg: 22px;
+  --shadow-sm: 0 1px 2px rgba(16, 24, 40, 0.06);
+  --shadow-md: 0 4px 12px rgba(16, 24, 40, 0.08);
+  --navbar-height: 60px;
+  --sidebar-width: 240px;
+}
+
+html, body { height: 100%; }
+body {
+  margin: 0;
+  font-family: 'Inter', Roboto, "Helvetica Neue", sans-serif;
+  background: var(--color-bg);
+  color: var(--color-text);
+}
+
+* { box-sizing: border-box; }
+
+a { color: var(--color-primary); }
+
+/* Shared building blocks — new feature pages should reach for these classes
+   instead of hand-rolling another one-off card/button/table skin. */
+
+.card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border-radius: var(--radius-sm);
+  border: 1px solid transparent;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+.btn-primary { background: var(--color-primary); color: var(--color-text-inverse); }
+.btn-primary:hover { background: var(--color-primary-hover); }
+.btn-secondary { background: var(--color-surface); color: var(--color-text); border-color: var(--color-border); }
+.btn-secondary:hover { background: var(--color-surface-hover); }
+.btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.table-clean {
+  width: 100%;
+  border-collapse: collapse;
+  background: var(--color-surface);
+}
+.table-clean th {
+  text-align: left;
+  padding: 12px;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--color-text-muted);
+  border-bottom: 1px solid var(--color-border);
+}
+.table-clean td {
+  padding: 12px;
+  border-bottom: 1px solid var(--color-border);
+  font-size: 14px;
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+}
+.badge-success { background: var(--color-success-bg); color: var(--color-success); }
+.badge-warning { background: var(--color-warning-bg); color: var(--color-warning); }
+.badge-danger { background: var(--color-danger-bg); color: var(--color-danger); }
+.badge-info { background: var(--color-info-bg); color: var(--color-info); }
+
+/* Task status colors — single source of truth. Was copy-pasted (with the
+   exact same hex values) into task-list and task-detail; use with the
+   `taskStatusLabel` pipe's status string, e.g. [ngClass]="'status-' + task.status". */
+.status-DONE { background: #c8e6c9; color: #2e7d32; }
+.status-PENDING { background: #e0e0e0; color: #424242; }
+.status-IN_PROGRESS { background: #bbdefb; color: #1d4ed8; }
+.status-CLOSED_LATE { background: #ffe0b2; color: #ef6c00; }
+.status-CANCELLED { background: #eeeeee; color: #9e9e9e; }
+
+/* Task priority colors — same duplication story, copy-pasted identically
+   into task-list, task-detail, and kanban-board. */
+.priority-URGENT { background: #ffebee; color: #c62828; }
+.priority-HIGH { background: #fff3e0; color: #e65100; }
+.priority-MEDIUM { background: #e3f2fd; color: #1d4ed8; }
+.priority-LOW { background: #f1f8e9; color: #33691e; }
+
+@media (max-width: 768px) {
+  .hide-mobile { display: none !important; }
+}
+
+/* Shared icon font — Material Symbols Outlined (simple, single-weight line
+   icons), replacing the old mix of emoji and filled Material Icons.
+   Usage: <span class="icon">check</span> */
+.material-symbols-outlined, .icon {
+  font-family: 'Material Symbols Outlined';
+  font-weight: normal;
+  font-style: normal;
+  font-size: 20px;
+  line-height: 1;
+  letter-spacing: normal;
+  text-transform: none;
+  white-space: nowrap;
+  word-wrap: normal;
+  direction: ltr;
+  -webkit-font-smoothing: antialiased;
+  vertical-align: middle;
+}

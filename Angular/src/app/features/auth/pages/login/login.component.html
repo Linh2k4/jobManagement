@@ -1,0 +1,51 @@
+<div class="login-container">
+  <div class="login-card">
+    <h1>Job Management System</h1>
+    <p class="subtitle">Sign in to your account</p>
+
+    <form [formGroup]="form" (ngSubmit)="onSubmit()">
+      <mat-form-field appearance="outline" class="full-width">
+        <mat-label>Email</mat-label>
+        <input matInput formControlName="email" type="email" placeholder="admin&#64;company.com">
+        <mat-error>{{ emailError }}</mat-error>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline" class="full-width">
+        <mat-label>Password</mat-label>
+        <input
+          matInput
+          formControlName="password"
+          [type]="hidePassword() ? 'password' : 'text'"
+          placeholder="Enter password">
+        <button
+          mat-icon-button
+          matSuffix
+          (click)="togglePasswordVisibility()"
+          type="button"
+          aria-label="Toggle password visibility"
+          [attr.aria-pressed]="hidePassword()">
+          <mat-icon>{{ hidePassword() ? 'visibility_off' : 'visibility' }}</mat-icon>
+        </button>
+        <mat-error>{{ passwordError }}</mat-error>
+      </mat-form-field>
+
+      <button
+        mat-raised-button
+        color="primary"
+        class="full-width"
+        [disabled]="form.invalid || loading()">
+        <mat-spinner *ngIf="loading()" diameter="20" class="spinner"></mat-spinner>
+        <span *ngIf="!loading()">Sign In</span>
+      </button>
+    </form>
+
+    <div class="test-credentials">
+      <p>Test Accounts:</p>
+      <ul>
+        <li><strong>Manager:</strong> admin&#64;company.com / admin123</li>
+        <li><strong>Lead:</strong> lead1&#64;company.com / admin123</li>
+        <li><strong>Member:</strong> member1&#64;company.com / admin123</li>
+      </ul>
+    </div>
+  </div>
+</div>

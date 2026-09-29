@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.27.xsd">
+
+    <!-- Explicit, ordered include list — do not switch to includeAll, its
+         directory-scan order is lexicographic and would break as soon as a
+         double-digit version (V10+) sorts before V2. -->
+    <include file="db/changelog/V1__create_users_and_roles.sql" relativeToChangelogFile="false"/>
+    <include file="db/changelog/V2__seed_dev_data.sql" relativeToChangelogFile="false"/>
+    <include file="db/changelog/V3__create_task_types_and_tasks.sql" relativeToChangelogFile="false"/>
+    <include file="db/changelog/V4__create_evaluations_and_notifications.sql" relativeToChangelogFile="false"/>
+    <include file="db/changelog/V5__Add_KPI_fields_to_tasks.sql" relativeToChangelogFile="false"/>
+    <include file="db/changelog/V6__Create_KPI_tables.sql" relativeToChangelogFile="false"/>
+    <include file="db/changelog/V7__Create_Evaluation_tables.sql" relativeToChangelogFile="false"/>
+    <include file="db/changelog/V8__Create_Category_tables.sql" relativeToChangelogFile="false"/>
+    <include file="db/changelog/V9__create_audit_logs_and_reminders.sql" relativeToChangelogFile="false"/>
+    <include file="db/changelog/V10__add_missing_kpi_columns.sql" relativeToChangelogFile="false"/>
+    <include file="db/changelog/V11__fix_task_difficulty_column_type.sql" relativeToChangelogFile="false"/>
+    <include file="db/changelog/V12__convert_native_enums_to_varchar.sql" relativeToChangelogFile="false"/>
+    <include file="db/changelog/V13__create_comments_notes_attachments.sql" relativeToChangelogFile="false"/>
+    <include file="db/changelog/V14__seed_task_types.sql" relativeToChangelogFile="false"/>
+    <include file="db/changelog/V15__convert_notification_type_to_varchar.sql" relativeToChangelogFile="false"/>
+    <include file="db/changelog/V16__create_deadline_extension_requests.sql" relativeToChangelogFile="false"/>
+    <include file="db/changelog/V17__redesign_task_subtask_hierarchy.sql" relativeToChangelogFile="false"/>
+    <include file="db/changelog/V18__reseed_multistep_template.sql" relativeToChangelogFile="false"/>
+    <include file="db/changelog/V19__create_leave_and_handover.sql" relativeToChangelogFile="false"/>
+    <include file="db/changelog/V20__multi_group_kpi_split.sql" relativeToChangelogFile="false"/>
+    <include file="db/changelog/V21__seed_more_dev_data.sql" relativeToChangelogFile="false"/>
+    <include file="db/changelog/V22__add_user_profile_fields.sql" relativeToChangelogFile="false"/>
+
+</databaseChangeLog>
