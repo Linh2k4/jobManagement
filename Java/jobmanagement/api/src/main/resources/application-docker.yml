@@ -45,7 +45,7 @@ mail:
 
 jwt:
   secret: ${JWT_SECRET:bZaZU_WpZYuV-bgoiC4oXWogfFgODOqaLmBFh4DsUpfTFosV2OZ_x-7Yegj0xFHMcrMVNoIwPCL_02eLug6F6w}
-  expiration-ms: ${JWT_EXPIRATION_MS:3600000}
+  expiration-ms: ${JWT_EXPIRATION_MS:604800000}
   refresh-expiration-ms: ${JWT_REFRESH_EXPIRATION_MS:604800000}
 
 cors:

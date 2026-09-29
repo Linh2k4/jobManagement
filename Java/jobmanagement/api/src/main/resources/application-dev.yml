@@ -15,7 +15,7 @@ spring:
 jwt:
   # Local dev only — must be >= 512 bits (64+ chars) for HS512 or JwtTokenProvider throws WeakKeyException
   secret: ${JWT_SECRET:bZaZU_WpZYuV-bgoiC4oXWogfFgODOqaLmBFh4DsUpfTFosV2OZ_x-7Yegj0xFHMcrMVNoIwPCL_02eLug6F6w}
-  expiration-ms: 3600000
+  expiration-ms: 604800000
   refresh-expiration-ms: 604800000
 
 logging:

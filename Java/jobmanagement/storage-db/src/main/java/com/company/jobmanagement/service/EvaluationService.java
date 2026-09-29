@@ -58,6 +58,7 @@ public class EvaluationService {
                             .manager(getManagerForUser(user))
                             .lead(getLeadForUser(user, groupId))
                             .status(Evaluation.EvaluationStatus.DRAFT)
+                            .isLocked(false)
                             .build();
 
                     return evaluationRepository.save(eval);
@@ -72,7 +73,7 @@ public class EvaluationService {
                 .orElseThrow(() -> new ResourceNotFoundException("Evaluation not found"));
 
         // Validate: evaluation not locked
-        if (eval.getIsLocked()) {
+        if (Boolean.TRUE.equals(eval.getIsLocked())) {
             throw new BusinessLogicException("Evaluation is locked and cannot be modified");
         }
 
@@ -117,7 +118,7 @@ public class EvaluationService {
                 .orElseThrow(() -> new ResourceNotFoundException("Evaluation not found"));
 
         // Validate: evaluation not locked
-        if (eval.getIsLocked()) {
+        if (Boolean.TRUE.equals(eval.getIsLocked())) {
             throw new BusinessLogicException("Evaluation is locked and cannot be modified");
         }
 
@@ -161,7 +162,7 @@ public class EvaluationService {
                 .orElseThrow(() -> new ResourceNotFoundException("Evaluation not found"));
 
         // Validate: evaluation not already locked
-        if (eval.getIsLocked()) {
+        if (Boolean.TRUE.equals(eval.getIsLocked())) {
             throw new BusinessLogicException("Evaluation is already finalized and locked");
         }
 
