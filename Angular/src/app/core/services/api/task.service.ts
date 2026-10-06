@@ -189,10 +189,20 @@ export class TaskService {
       .pipe(map(res => res.data));
   }
 
+  /** GET /deadline-extensions — Lead: own team; Manager: whole company */
+  listDeadlineExtensions(status?: string): Observable<DeadlineExtension[]> {
+    let params = new HttpParams();
+    if (status && status !== 'ALL') {
+      params = params.set('status', status);
+    }
+    return this.http.get<{ data: DeadlineExtension[]; success: boolean }>(`/api/v1/deadline-extensions`, { params })
+      .pipe(map(res => res.data || []));
+  }
+
   /** GET /deadline-extensions/pending — Lead: own team; Manager: whole company */
   getPendingDeadlineExtensions(): Observable<DeadlineExtension[]> {
     return this.http.get<{ data: DeadlineExtension[]; success: boolean }>(`/api/v1/deadline-extensions/pending`)
-      .pipe(map(res => res.data));
+      .pipe(map(res => res.data || []));
   }
 
   approveDeadlineExtension(id: number, note?: string): Observable<{ data: DeadlineExtension; success: boolean }> {

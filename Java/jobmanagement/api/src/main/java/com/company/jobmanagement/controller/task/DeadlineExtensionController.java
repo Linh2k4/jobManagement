@@ -27,6 +27,18 @@ public class DeadlineExtensionController extends BaseController {
 
     private final DeadlineExtensionService deadlineExtensionService;
 
+    @GetMapping
+    @Operation(summary = "List extension requests for review", description = "Lead: own team; Manager: whole company", operationId = "listDeadlineExtensions")
+    @PreAuthorize("hasAnyRole('LEAD', 'MANAGER')")
+    @SecurityRequirement(name = "bearer-jwt")
+    public ResponseEntity<ApiResponse<List<DeadlineExtensionResponse>>> listRequests(
+            @RequestParam(required = false) String status) {
+        List<DeadlineExtensionResponse> responses = deadlineExtensionService.getAllForCurrentUser(status).stream()
+                .map(this::toDTO)
+                .collect(Collectors.toList());
+        return ok(ApiResponse.success(responses));
+    }
+
     @GetMapping("/pending")
     @Operation(summary = "Pending extension requests awaiting my review", description = "Lead: own team; Manager: whole company", operationId = "getMyPendingDeadlineExtensions")
     @PreAuthorize("hasAnyRole('LEAD', 'MANAGER')")

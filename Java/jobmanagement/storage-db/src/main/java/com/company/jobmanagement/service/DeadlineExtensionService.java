@@ -22,6 +22,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
 import java.time.ZonedDateTime;
 import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * Deadline extension request/approval workflow (Scope.md §12). The
@@ -51,9 +52,6 @@ public class DeadlineExtensionService {
                 .orElseThrow(() -> new ResourceNotFoundException("Task not found with id: " + taskId));
         User requester = currentUser.getCurrentUser();
 
-        if (task.getTaskType().getTimeCategory() == TimeCategory.FAST) {
-            throw new ForbiddenOperationException("FAST Task không hỗ trợ gia hạn deadline");
-        }
         if (task.getStatus() == TaskStatus.DONE || task.getStatus() == TaskStatus.CANCELLED) {
             throw new ForbiddenOperationException("Không thể gia hạn task đã hoàn thành hoặc đã huỷ");
         }
@@ -63,7 +61,7 @@ public class DeadlineExtensionService {
 
         LocalDate currentDeadline = task.getDueDate() != null ? task.getDueDate() : LocalDate.now();
         if (!requestedDeadline.isAfter(currentDeadline)) {
-            throw new IllegalArgumentException("Deadline mới phải sau deadline hiện tại");
+            throw new IllegalArgumentException("Deadline mới phải sau deadline hiện tại (" + currentDeadline + ")");
         }
         if (requestedDeadline.isAfter(currentDeadline.plusDays(MAX_EXTEND_DAYS))) {
             throw new IllegalArgumentException("Không thể gia hạn quá " + MAX_EXTEND_DAYS + " ngày mỗi lần");
@@ -139,9 +137,6 @@ public class DeadlineExtensionService {
 
         Task task = request.getTask();
         task.setDueDate(request.getRequestedDeadline());
-        if (task.getStatus() == TaskStatus.IN_PROGRESS) {
-            // Deadline moved forward — an in-progress task effectively stops being overdue.
-        }
         task.setUpdatedAt(ZonedDateTime.now());
         taskRepository.save(task);
         invalidateKpi(task);
@@ -154,26 +149,29 @@ public class DeadlineExtensionService {
                 "Deadline cho task \"" + task.getTitle() + "\" đã được gia hạn đến " + request.getRequestedDeadline(),
                 task.getId()
         );
-        task.getAssignments().stream()
-                .filter(TaskAssignment::getIsCurrent)
-                .findFirst()
-                .filter(a -> !a.getAssignee().getId().equals(requestedBy.getId()))
-                .ifPresent(a -> notificationService.notify(
-                        a.getAssignee(),
-                        NotificationType.SYSTEM,
-                        "Deadline task đã thay đổi",
-                        "Deadline cho task \"" + task.getTitle() + "\" đã được gia hạn đến " + request.getRequestedDeadline(),
-                        task.getId()
-                ));
+        if (task.getAssignments() != null) {
+            task.getAssignments().stream()
+                    .filter(TaskAssignment::getIsCurrent)
+                    .findFirst()
+                    .filter(a -> a.getAssignee() != null && !a.getAssignee().getId().equals(requestedBy.getId()))
+                    .ifPresent(a -> notificationService.notify(
+                            a.getAssignee(),
+                            NotificationType.SYSTEM,
+                            "Deadline task đã thay đổi",
+                            "Deadline cho task \"" + task.getTitle() + "\" đã được gia hạn đến " + request.getRequestedDeadline(),
+                            task.getId()
+                    ));
+        }
 
         return saved;
     }
 
     private void invalidateKpi(Task task) {
-        if (task.getDueDate() == null) return;
+        if (task.getDueDate() == null || task.getAssignments() == null) return;
         task.getAssignments().stream()
                 .filter(TaskAssignment::getIsCurrent)
                 .findFirst()
+                .filter(a -> a.getAssignee() != null)
                 .ifPresent(a -> kpiCacheService.invalidateKpi(a.getAssignee().getId(), java.time.YearMonth.from(task.getDueDate())));
     }
 
@@ -195,9 +193,12 @@ public class DeadlineExtensionService {
         if (reviewer.isManager()) {
             return;
         }
-        if (reviewer.isLead() && requester.isMember()
-                && requester.getLead() != null && requester.getLead().getId().equals(reviewer.getId())) {
-            return;
+        if (reviewer.isLead()) {
+            boolean isDirectLead = requester.getLead() != null && requester.getLead().getId().equals(reviewer.getId());
+            boolean isTaskGroupLead = request.getTask().getGroup() != null && request.getTask().getGroup().getLead() != null && request.getTask().getGroup().getLead().getId().equals(reviewer.getId());
+            if (isDirectLead || isTaskGroupLead) {
+                return;
+            }
         }
         throw new ForbiddenOperationException("Bạn không có quyền duyệt yêu cầu này");
     }
@@ -225,14 +226,30 @@ public class DeadlineExtensionService {
 
     @Transactional(readOnly = true)
     public List<DeadlineExtensionRequest> getPendingForCurrentUser() {
+        return getAllForCurrentUser("PENDING");
+    }
+
+    @Transactional(readOnly = true)
+    public List<DeadlineExtensionRequest> getAllForCurrentUser(String status) {
         User user = currentUser.getCurrentUser();
+        List<DeadlineExtensionRequest> list;
         if (user.isManager()) {
-            return requestRepository.findAllPending();
+            list = requestRepository.findAllByOrderByCreatedAtDesc();
+        } else if (user.isLead()) {
+            list = requestRepository.findAllForLeadOrderByCreatedAtDesc(user.getId());
+        } else {
+            list = List.of();
         }
-        if (user.isLead()) {
-            return requestRepository.findPendingForLeadTeam(user.getId());
+
+        if (status != null && !status.isBlank() && !"ALL".equalsIgnoreCase(status)) {
+            try {
+                DeadlineExtensionRequest.Status targetStatus = DeadlineExtensionRequest.Status.valueOf(status.toUpperCase());
+                return list.stream().filter(r -> r.getStatus() == targetStatus).collect(Collectors.toList());
+            } catch (IllegalArgumentException e) {
+                return list;
+            }
         }
-        return List.of();
+        return list;
     }
 
     /**

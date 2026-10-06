@@ -112,9 +112,13 @@ public class GlobalExceptionHandler {
             errors.put(fieldName, errorMessage);
         });
 
+        String detailedMessage = errors.isEmpty()
+                ? "Dữ liệu không hợp lệ"
+                : String.join("; ", errors.values());
+
         ErrorResponse errorResponse = ErrorResponse.builder()
                 .status(HttpStatus.BAD_REQUEST.value())
-                .message("Validation failed")
+                .message(detailedMessage)
                 .path(request.getRequestURI())
                 .errors(errors)
                 .build();

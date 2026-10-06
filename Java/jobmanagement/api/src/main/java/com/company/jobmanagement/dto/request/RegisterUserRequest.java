@@ -42,15 +42,11 @@ public class RegisterUserRequest {
     )
     private String fullName;
 
-    @NotBlank(message = "Password is required")
-    @Size(min = 8, max = 128, message = "Password must be 8-128 characters")
-    @Pattern(
-        regexp = "^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d).*$",
-        message = "Password must contain at least one lowercase, one uppercase, and one digit"
-    )
+    @NotBlank(message = "Mật khẩu không được để trống")
+    @Size(min = 6, max = 128, message = "Mật khẩu phải có từ 6 đến 128 ký tự")
     @Schema(
-        description = "Password (min 8 chars, must have uppercase, lowercase, digit)",
-        example = "SecurePass123",
+        description = "Mật khẩu (tối thiểu 6 ký tự)",
+        example = "password123",
         requiredMode = Schema.RequiredMode.REQUIRED
     )
     private String password;

@@ -13,13 +13,34 @@ import { DeadlineExtension } from '../../../../core/models';
     <div class="extensions-page animate-fade-in">
       <!-- PAGE HEADER -->
       <div class="page-header">
-        <div>
+        <div class="header-left">
           <div class="title-with-badge">
             <h1 class="page-title">Yêu cầu gia hạn deadline</h1>
-            <span class="count-badge" *ngIf="requests.length > 0">{{ requests.length }} chờ duyệt</span>
+            <span class="count-badge" *ngIf="pendingCount > 0">{{ pendingCount }} chờ duyệt</span>
           </div>
           <p class="page-subtitle">Xem xét và phê duyệt các yêu cầu thay đổi hạn hoàn thành từ thành viên</p>
         </div>
+        <div class="header-right">
+          <button class="btn btn-secondary btn-sm" (click)="load()">
+            <span class="icon">refresh</span> Làm mới
+          </button>
+        </div>
+      </div>
+
+      <!-- FILTER TABS -->
+      <div class="filter-tabs">
+        <button class="tab-btn" [class.active]="selectedStatus === 'PENDING'" (click)="setStatusFilter('PENDING')">
+          Chờ duyệt <span class="tab-count" *ngIf="pendingCount > 0">{{ pendingCount }}</span>
+        </button>
+        <button class="tab-btn" [class.active]="selectedStatus === 'APPROVED'" (click)="setStatusFilter('APPROVED')">
+          Đã duyệt
+        </button>
+        <button class="tab-btn" [class.active]="selectedStatus === 'REJECTED'" (click)="setStatusFilter('REJECTED')">
+          Đã từ chối
+        </button>
+        <button class="tab-btn" [class.active]="selectedStatus === 'ALL'" (click)="setStatusFilter('ALL')">
+          Tất cả
+        </button>
       </div>
 
       <!-- LOADING -->
@@ -33,8 +54,8 @@ import { DeadlineExtension } from '../../../../core/models';
         <div class="state-icon-box success">
           <span class="icon">task_alt</span>
         </div>
-        <h3>Tất cả đã được xử lý!</h3>
-        <p class="text-muted">Hiện tại không có yêu cầu xin gia hạn nào đang chờ bạn duyệt.</p>
+        <h3>{{ emptyTitle }}</h3>
+        <p class="text-muted">{{ emptySubtitle }}</p>
       </div>
 
       <!-- REQUESTS LIST -->
@@ -45,16 +66,21 @@ import { DeadlineExtension } from '../../../../core/models';
               <a (click)="router.navigate(['/tasks', r.taskId])" class="task-title-link">
                 {{ r.taskTitle }}
               </a>
-              <span class="ext-badge">Lần gia hạn #{{ r.extensionNumber }}</span>
+              <div class="header-badges">
+                <span class="status-pill" [ngClass]="'status-' + (r.status || '').toLowerCase()">
+                  {{ statusLabel(r.status) }}
+                </span>
+                <span class="ext-badge">Lần #{{ r.extensionNumber }}</span>
+              </div>
             </div>
           </div>
 
           <div class="request-body">
             <div class="user-row">
-              <div class="user-avatar">{{ initials(r.requestedBy.fullName) }}</div>
+              <div class="user-avatar">{{ initials(r.requestedBy?.fullName) }}</div>
               <div class="user-meta">
-                <strong>{{ r.requestedBy.fullName }}</strong>
-                <span class="user-role">{{ r.requestedBy.role }}</span>
+                <strong>{{ r.requestedBy?.fullName }}</strong>
+                <span class="user-role">{{ r.requestedBy?.role }}</span>
               </div>
             </div>
 
@@ -75,13 +101,19 @@ import { DeadlineExtension } from '../../../../core/models';
               <p class="reason-text">"{{ r.reason }}"</p>
             </div>
 
+            <div class="review-box" *ngIf="r.reviewNote">
+              <span class="review-label">Phản hồi của người duyệt ({{ r.reviewedBy?.fullName || 'Quản lý' }}):</span>
+              <p class="review-text">"{{ r.reviewNote }}"</p>
+            </div>
+
             <div class="request-meta-info">
               <span><span class="icon">schedule</span> Gửi lúc {{ r.createdAt | date:'HH:mm dd/MM/yyyy' }}</span>
-              <span *ngIf="r.expiresAt"><span class="icon">timer</span> Hết hạn duyệt {{ r.expiresAt | date:'HH:mm dd/MM/yyyy' }}</span>
+              <span *ngIf="r.expiresAt && r.status === 'PENDING'"><span class="icon">timer</span> Hết hạn duyệt {{ r.expiresAt | date:'HH:mm dd/MM/yyyy' }}</span>
+              <span *ngIf="r.reviewedAt"><span class="icon">verified</span> Duyệt lúc {{ r.reviewedAt | date:'HH:mm dd/MM/yyyy' }}</span>
             </div>
           </div>
 
-          <div class="request-footer">
+          <div class="request-footer" *ngIf="r.status === 'PENDING'">
             <input
               type="text"
               [(ngModel)]="noteInputs[r.id]"
@@ -108,7 +140,10 @@ import { DeadlineExtension } from '../../../../core/models';
     }
 
     .page-header {
-      margin-bottom: 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
     }
     .title-with-badge {
       display: flex;
@@ -135,6 +170,44 @@ import { DeadlineExtension } from '../../../../core/models';
       color: var(--color-text-muted);
       font-size: 14px;
       margin: 4px 0 0 0;
+    }
+
+    /* FILTER TABS */
+    .filter-tabs {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 20px;
+      border-bottom: 1px solid var(--color-border);
+      padding-bottom: 8px;
+    }
+    .tab-btn {
+      background: none;
+      border: 1px solid transparent;
+      padding: 8px 16px;
+      border-radius: 8px;
+      font-weight: 700;
+      font-size: 14px;
+      color: var(--color-text-muted);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.2s;
+    }
+    .tab-btn:hover {
+      background: #f1f5f9;
+      color: var(--color-text);
+    }
+    .tab-btn.active {
+      background: #0284c7;
+      color: white;
+    }
+    .tab-count {
+      background: #ef4444;
+      color: white;
+      font-size: 11px;
+      padding: 1px 6px;
+      border-radius: 999px;
     }
 
     /* STATE CARD */
@@ -210,6 +283,21 @@ import { DeadlineExtension } from '../../../../core/models';
     .task-title-link:hover {
       text-decoration: underline;
     }
+    .header-badges {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .status-pill {
+      padding: 3px 10px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 700;
+    }
+    .status-pending { background: #fef3c7; color: #b45309; }
+    .status-approved { background: #dcfce7; color: #15803d; }
+    .status-rejected { background: #fee2e2; color: #b91c1c; }
+    .status-expired { background: #f1f5f9; color: #64748b; }
     .ext-badge {
       background: #e2e8f0;
       color: #475569;
@@ -276,6 +364,15 @@ import { DeadlineExtension } from '../../../../core/models';
     .reason-label { font-size: 11.5px; font-weight: 700; color: #92400e; display: block; margin-bottom: 3px; }
     .reason-text { margin: 0; font-size: 13.5px; color: #78350f; font-style: italic; }
 
+    .review-box {
+      background: #f0fdf4;
+      border-left: 3.5px solid #22c55e;
+      border-radius: 0 var(--radius-xs) var(--radius-xs) 0;
+      padding: 10px 14px;
+    }
+    .review-label { font-size: 11.5px; font-weight: 700; color: #166534; display: block; margin-bottom: 3px; }
+    .review-text { margin: 0; font-size: 13.5px; color: #14532d; }
+
     .request-meta-info {
       display: flex;
       gap: 18px;
@@ -300,6 +397,9 @@ import { DeadlineExtension } from '../../../../core/models';
       flex: 1;
       min-width: 240px;
       background: #ffffff !important;
+      padding: 8px 12px;
+      border: 1px solid var(--color-border);
+      border-radius: 8px;
     }
     .action-buttons {
       display: flex;
@@ -308,7 +408,14 @@ import { DeadlineExtension } from '../../../../core/models';
     .btn-approve {
       background: #059669;
       color: white;
-      box-shadow: 0 2px 8px rgba(5, 150, 105, 0.25);
+      padding: 8px 16px;
+      border-radius: 8px;
+      font-weight: 700;
+      border: none;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 4px;
     }
     .btn-approve:hover {
       background: #047857;
@@ -317,6 +424,13 @@ import { DeadlineExtension } from '../../../../core/models';
       background: #fff1f2;
       color: #e11d48;
       border: 1px solid #fecdd3;
+      padding: 8px 16px;
+      border-radius: 8px;
+      font-weight: 700;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 4px;
     }
     .btn-reject:hover {
       background: #e11d48;
@@ -330,22 +444,64 @@ export class DeadlineExtensionsComponent implements OnInit {
 
   requests: DeadlineExtension[] = [];
   loading = false;
+  selectedStatus: 'PENDING' | 'APPROVED' | 'REJECTED' | 'ALL' = 'PENDING';
+  pendingCount = 0;
   noteInputs: Record<number, string> = {};
 
   ngOnInit() {
     this.load();
   }
 
+  setStatusFilter(status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'ALL') {
+    this.selectedStatus = status;
+    this.load();
+  }
+
   load() {
     this.loading = true;
-    this.taskService.getPendingDeadlineExtensions().subscribe({
-      next: requests => { this.requests = requests; this.loading = false; },
-      error: () => { this.loading = false; }
+    this.taskService.listDeadlineExtensions(this.selectedStatus).subscribe({
+      next: requests => {
+        this.requests = requests;
+        this.loading = false;
+        // Also update pending count
+        if (this.selectedStatus === 'PENDING') {
+          this.pendingCount = requests.length;
+        } else {
+          this.taskService.getPendingDeadlineExtensions().subscribe({
+            next: pending => { this.pendingCount = pending.length; }
+          });
+        }
+      },
+      error: () => {
+        this.loading = false;
+      }
     });
   }
 
-  initials(name: string): string {
-    return (name || '').split(' ').map(p => p[0]).slice(-2).join('').toUpperCase();
+  get emptyTitle(): string {
+    if (this.selectedStatus === 'PENDING') return 'Tất cả đã được xử lý!';
+    if (this.selectedStatus === 'APPROVED') return 'Chưa có yêu cầu nào được duyệt';
+    if (this.selectedStatus === 'REJECTED') return 'Chưa có yêu cầu nào bị từ chối';
+    return 'Không có yêu cầu gia hạn nào';
+  }
+
+  get emptySubtitle(): string {
+    if (this.selectedStatus === 'PENDING') return 'Hiện tại không có yêu cầu xin gia hạn nào đang chờ bạn duyệt.';
+    return 'Dữ liệu sẽ xuất hiện khi có yêu cầu gia hạn tương ứng.';
+  }
+
+  statusLabel(status: string): string {
+    switch (status) {
+      case 'PENDING': return 'Chờ duyệt';
+      case 'APPROVED': return 'Đã duyệt';
+      case 'REJECTED': return 'Từ chối';
+      case 'EXPIRED': return 'Hết hạn';
+      default: return status || 'N/A';
+    }
+  }
+
+  initials(name: string | undefined): string {
+    return (name || '').split(' ').map(p => p[0]).slice(-2).join('').toUpperCase() || '?';
   }
 
   approve(r: DeadlineExtension) {

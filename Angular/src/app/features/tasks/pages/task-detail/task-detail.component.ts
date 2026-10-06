@@ -69,12 +69,12 @@ import { TaskStatusLabelPipe } from '../../../../shared/pipes/task-status-label.
             </div>
 
             <!-- Member/Lead: request-and-approval flow -->
-            <ng-container *ngIf="!authStore.isManager() && task.currentAssignment as a">
+            <ng-container *ngIf="!authStore.isManager()">
               <div class="pending-ext" *ngIf="pendingExtension">
                 Đang chờ duyệt: dời sang {{ pendingExtension.requestedDeadline | date:'mediumDate' }}
                 (gửi lúc {{ pendingExtension.createdAt | date:'short' }})
               </div>
-              <div class="inline-form" *ngIf="!pendingExtension">
+              <div class="inline-form" *ngIf="!pendingExtension && task.status !== 'DONE' && task.status !== 'CANCELLED'">
                 <input type="date" [(ngModel)]="extDeadlineInput">
                 <input type="text" [(ngModel)]="extReasonInput" placeholder="Lý do (tối thiểu 10 ký tự)">
                 <button (click)="requestExtension(task.id)">Xin gia hạn</button>
@@ -413,6 +413,7 @@ export class TaskDetailComponent implements OnInit {
         this.extDeadlineInput = '';
         this.extReasonInput = '';
         this.loadExtensionHistory(taskId);
+        this.reloadTask(taskId);
       },
       error: (err) => alert(err.error?.message || 'Không thể gửi yêu cầu gia hạn')
     });
