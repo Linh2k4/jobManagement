@@ -80,12 +80,13 @@ public class KpiComponent {
     private ZonedDateTime updatedAt = ZonedDateTime.now();
 
     public String calculateRanking() {
-        if (kpiFinal == null) return null;
-        double score = kpiFinal.doubleValue();
-        if (score >= 90) return "Xuất sắc";
-        if (score >= 75) return "Tốt";
-        if (score >= 60) return "Đạt";
-        if (score >= 45) return "Cần cải thiện";
+        BigDecimal score = kpiFinal != null ? kpiFinal : autoScore;
+        if (score == null) return "Chưa xếp hạng";
+        double s = score.doubleValue();
+        if (s >= 90) return "Xuất sắc";
+        if (s >= 75) return "Tốt";
+        if (s >= 60) return "Đạt";
+        if (s >= 45) return "Cần cải thiện";
         return "Không đạt";
     }
 

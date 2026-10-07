@@ -27,15 +27,16 @@ public interface DeadlineExtensionRequestRepository extends JpaRepository<Deadli
     @Query("SELECT COALESCE(MAX(r.extensionNumber), 0) FROM DeadlineExtensionRequest r WHERE r.task.id = :taskId")
     int findMaxExtensionNumber(@Param("taskId") Long taskId);
 
-    /** Manager sees every pending request system-wide. */
+    /** Manager sees every request system-wide. */
     @Query("SELECT r FROM DeadlineExtensionRequest r JOIN FETCH r.requestedBy JOIN FETCH r.task t " +
-           "WHERE r.status = 'PENDING' ORDER BY r.createdAt ASC")
-    List<DeadlineExtensionRequest> findAllPending();
+           "LEFT JOIN FETCH r.reviewedBy ORDER BY r.createdAt DESC")
+    List<DeadlineExtensionRequest> findAllByOrderByCreatedAtDesc();
 
-    /** Lead sees pending requests from their own team members. */
+    /** Lead sees requests from their own team members. */
     @Query("SELECT r FROM DeadlineExtensionRequest r JOIN FETCH r.requestedBy rb JOIN FETCH r.task t " +
-           "WHERE r.status = 'PENDING' AND rb.lead.id = :leadId ORDER BY r.createdAt ASC")
-    List<DeadlineExtensionRequest> findPendingForLeadTeam(@Param("leadId") Long leadId);
+           "LEFT JOIN FETCH r.reviewedBy " +
+           "WHERE (rb.lead.id = :leadId OR t.group.lead.id = :leadId) ORDER BY r.createdAt DESC")
+    List<DeadlineExtensionRequest> findAllForLeadOrderByCreatedAtDesc(@Param("leadId") Long leadId);
 
     @Query("SELECT r FROM DeadlineExtensionRequest r JOIN FETCH r.requestedBy JOIN FETCH r.task " +
            "WHERE r.status = 'PENDING' AND r.expiresAt < :now")

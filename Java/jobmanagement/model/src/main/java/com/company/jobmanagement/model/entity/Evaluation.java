@@ -107,7 +107,8 @@ public class Evaluation {
     @Builder.Default
     private EvaluationStatus status = EvaluationStatus.DRAFT;
 
-    @Column
+    @Column(nullable = false)
+    @Builder.Default
     private Boolean isLocked = false;
 
     @Column(columnDefinition = "TIMESTAMPTZ")
@@ -152,6 +153,10 @@ public class Evaluation {
                 .add(managerDiscipline);
         return sum.divide(BigDecimal.valueOf(4), 2, RoundingMode.HALF_UP)
                 .multiply(BigDecimal.TEN);
+    }
+
+    public Boolean getIsLocked() {
+        return Boolean.TRUE.equals(this.isLocked);
     }
 
     public void lock() {

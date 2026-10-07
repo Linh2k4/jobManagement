@@ -1,227 +1,496 @@
-<div class="dashboard-container">
-  <div class="header">
-    <h1>Dashboard</h1>
-    <p class="subtitle">Track your performance and team productivity</p>
+<div class="dashboard-page animate-fade-in">
+  <!-- Header -->
+  <div class="page-header">
+    <div class="header-left">
+      <h1>Tổng quan hiệu suất</h1>
+      <p class="subtitle">Theo dõi tiến độ công việc và đánh giá KPI thời gian thực</p>
+    </div>
+    <div class="header-right" *ngIf="!loading()">
+      <button class="btn btn-secondary btn-sm" (click)="loadDashboard()">
+        <span class="icon">refresh</span> Làm mới
+      </button>
+    </div>
   </div>
 
-  <div *ngIf="loading()" class="loading">
-    <mat-spinner diameter="40"></mat-spinner>
-    <p>Loading dashboard...</p>
+  <div *ngIf="loading()" class="loading-state">
+    <span class="icon spinner">sync</span>
+    <p>Đang tải dữ liệu bảng điều khiển...</p>
   </div>
 
-  <!-- Member view -->
-  <div *ngIf="!loading() && isMember() && memberData() as data" class="content">
-    <mat-card class="kpi-card">
-      <mat-card-header>
-        <mat-card-title>Your Performance</mat-card-title>
-      </mat-card-header>
-      <mat-card-content>
-        <div class="kpi-grid">
-          <div class="kpi-item">
-            <span class="label">Total Tasks</span>
-            <span class="value">{{ data.taskCount }}</span>
-          </div>
-          <div class="kpi-item">
-            <span class="label">High Priority</span>
-            <span class="value">{{ data.highPriorityCount }}</span>
-          </div>
-          <div class="kpi-item">
-            <span class="label">Completion Rate</span>
-            <span class="value">{{ (data.completionRate || 0) | number: '1.0-0' }}%</span>
-          </div>
+  <!-- MEMBER VIEW -->
+  <div *ngIf="!loading() && isMember() && memberData() as data" class="dashboard-layout">
+    <!-- Top 4 Stats Grid -->
+    <div class="stats-overview-grid">
+      <div class="stat-card">
+        <div class="stat-icon-badge sky">
+          <span class="icon">assignment</span>
         </div>
-
-        <div class="progress-section">
-          <div class="progress-label">
-            <span>Progress</span>
-            <span class="percentage">{{ (data.completionRate || 0) | number: '1.0-0' }}%</span>
-          </div>
-          <mat-progress-bar
-            mode="determinate"
-            [value]="data.completionRate || 0"
-            [color]="getCompletionColor(data.completionRate || 0)">
-          </mat-progress-bar>
+        <div class="stat-details">
+          <span class="stat-title">Tổng công việc</span>
+          <span class="stat-value">{{ data.taskCount }}</span>
         </div>
+      </div>
 
-        <div *ngIf="data.kpi as kpi" class="kpi-final">
-          <span class="label">KPI kỳ này</span>
-          <span class="value">{{ (kpi.kpiFinal || 0) | number: '1.0-0' }} — {{ kpi.ranking }}</span>
+      <div class="stat-card">
+        <div class="stat-icon-badge amber">
+          <span class="icon">priority_high</span>
         </div>
-
-        <div *ngIf="data.hasActiveEvaluation" class="warning">
-          <mat-icon>info</mat-icon>
-          <span>Bạn có kỳ đánh giá đang mở — cần tự đánh giá</span>
+        <div class="stat-details">
+          <span class="stat-title">Ưu tiên cao</span>
+          <span class="stat-value">{{ data.highPriorityCount }}</span>
         </div>
-      </mat-card-content>
-    </mat-card>
+      </div>
 
-    <ng-container *ngTemplateOutlet="taskInsights; context: {
-      overdueCount: data.overdueTasksList.length,
-      upcomingCount: data.upcomingDeadlines.length,
-      breakdown: data.statusBreakdown,
-      overdueList: data.overdueTasksList
-    }"></ng-container>
-  </div>
-
-  <!-- Team Lead view -->
-  <div *ngIf="!loading() && isLead() && leadData() as data" class="content">
-    <mat-card class="team-kpi-card">
-      <mat-card-header>
-        <mat-card-title>Team Performance</mat-card-title>
-      </mat-card-header>
-      <mat-card-content>
-        <div class="team-stats">
-          <div class="stat">
-            <span class="label">Team Size</span>
-            <span class="value">{{ data.teamSize }} members</span>
-          </div>
-          <div class="stat">
-            <span class="label">Avg KPI</span>
-            <span class="value">{{ (data.avgKpi || 0) | number: '1.0-0' }}</span>
-          </div>
-          <div class="stat">
-            <span class="label">Completion Rate</span>
-            <span class="value">{{ (data.completionRate || 0) | number: '1.0-0' }}%</span>
-          </div>
-          <div class="stat" [class.alert]="data.overdueTasks > 0">
-            <span class="label">Overdue</span>
-            <span class="value">{{ data.overdueTasks }}</span>
-          </div>
+      <div class="stat-card">
+        <div class="stat-icon-badge emerald">
+          <span class="icon">task_alt</span>
         </div>
+        <div class="stat-details">
+          <span class="stat-title">Tỷ lệ hoàn thành</span>
+          <span class="stat-value">{{ (data.completionRate || 0) | number: '1.0-0' }}%</span>
+        </div>
+      </div>
 
-        <div class="team-members">
-          <h3>Team Members</h3>
-          <div *ngFor="let member of data.teamMembers" class="member-item">
-            <div class="member-info">
-              <span class="name">{{ member.userFullName }}</span>
-              <span class="completion">{{ (member.kpiFinal || 0) | number: '1.0-0' }} — {{ member.ranking }}</span>
+      <div class="stat-card" [class.alert-card]="data.overdueTasksList.length > 0">
+        <div class="stat-icon-badge" [ngClass]="data.overdueTasksList.length > 0 ? 'rose' : 'slate'">
+          <span class="icon">schedule</span>
+        </div>
+        <div class="stat-details">
+          <span class="stat-title">Việc quá hạn</span>
+          <span class="stat-value" [class.text-danger]="data.overdueTasksList.length > 0">{{ data.overdueTasksList.length }}</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Main Content Grid -->
+    <div class="main-dashboard-grid">
+      <!-- Left Column -->
+      <div class="dashboard-col">
+        <!-- Progress Donut Card -->
+        <div class="dashboard-card card">
+          <div class="card-title-row">
+            <div class="title-with-icon">
+              <span class="icon card-icon">donut_small</span>
+              <h3>Tiến độ & Phân bổ công việc</h3>
             </div>
-            <mat-progress-bar
-              mode="determinate"
-              [value]="member.kpiFinal || 0"
-              [color]="getCompletionColor(member.kpiFinal || 0)">
-            </mat-progress-bar>
+          </div>
+
+          <div class="donut-content-layout">
+            <div class="donut-chart-wrap">
+              <div class="donut-circle" [style.background]="donutGradient(data.statusBreakdown)">
+                <div class="donut-hole">
+                  <span class="donut-num">{{ data.statusBreakdown.done }}/{{ data.taskCount }}</span>
+                  <span class="donut-sub">Đã xong</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="donut-legend-wrap">
+              <div class="legend-row">
+                <span class="legend-dot dot-done"></span>
+                <span class="legend-text">Hoàn thành</span>
+                <strong class="legend-val">{{ data.statusBreakdown.done }}</strong>
+              </div>
+              <div class="legend-row">
+                <span class="legend-dot dot-progress"></span>
+                <span class="legend-text">Đang thực hiện</span>
+                <strong class="legend-val">{{ data.statusBreakdown.inProgress }}</strong>
+              </div>
+              <div class="legend-row">
+                <span class="legend-dot dot-pending"></span>
+                <span class="legend-text">Chưa bắt đầu</span>
+                <strong class="legend-val">{{ data.statusBreakdown.pending }}</strong>
+              </div>
+              <div class="legend-row" *ngIf="data.statusBreakdown.closedLate">
+                <span class="legend-dot dot-late"></span>
+                <span class="legend-text">Hoàn thành trễ</span>
+                <strong class="legend-val">{{ data.statusBreakdown.closedLate }}</strong>
+              </div>
+              <div class="legend-row" *ngIf="data.statusBreakdown.cancelled">
+                <span class="legend-dot dot-cancelled"></span>
+                <span class="legend-text">Đã huỷ</span>
+                <strong class="legend-val">{{ data.statusBreakdown.cancelled }}</strong>
+              </div>
+            </div>
           </div>
         </div>
-      </mat-card-content>
-    </mat-card>
 
-    <ng-container *ngTemplateOutlet="taskInsights; context: {
-      overdueCount: data.overdueTasks,
-      upcomingCount: data.upcomingDeadlines.length,
-      breakdown: data.statusBreakdown,
-      overdueList: data.overdueTasksList
-    }"></ng-container>
+        <!-- KPI Summary Box -->
+        <div class="dashboard-card card" *ngIf="data.kpi as kpi">
+          <div class="card-title-row">
+            <div class="title-with-icon">
+              <span class="icon card-icon">workspace_premium</span>
+              <h3>Đánh giá KPI cá nhân</h3>
+            </div>
+            <span class="badge badge-primary">{{ kpi.ranking || 'Chưa xếp hạng' }}</span>
+          </div>
+
+          <div class="kpi-score-display">
+            <div class="score-main">
+              <span class="score-number">{{ (kpi.kpiFinal || 0) | number: '1.0-1' }}</span>
+              <span class="score-max">/ 100 điểm</span>
+            </div>
+            <p class="score-desc">Điểm tổng kết bao gồm Đánh giá tự động + Lead đánh giá + Manager chốt điểm</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right Column -->
+      <div class="dashboard-col">
+        <!-- Overdue Tasks List -->
+        <div class="dashboard-card card">
+          <div class="card-title-row">
+            <div class="title-with-icon">
+              <span class="icon card-icon rose-icon">alarm</span>
+              <h3>Công việc cần chú ý</h3>
+            </div>
+            <span class="badge badge-danger" *ngIf="data.overdueTasksList.length > 0">{{ data.overdueTasksList.length }} trễ hạn</span>
+          </div>
+
+          <div class="overdue-tasks-list" *ngIf="data.overdueTasksList.length > 0">
+            <div class="overdue-task-item" *ngFor="let task of data.overdueTasksList">
+              <div class="overdue-task-header">
+                <span class="task-title-text">{{ task.title }}</span>
+                <span class="badge-late">Trễ {{ daysOverdue(task.dueDate) }} ngày</span>
+              </div>
+              <div class="overdue-task-meta">
+                <span><span class="icon">event</span> Hạn: {{ task.dueDate | date:'dd/MM/yyyy' }}</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="empty-placeholder" *ngIf="data.overdueTasksList.length === 0">
+            <span class="icon good-icon">check_circle</span>
+            <p>Tuyệt vời! Bạn không có công việc nào bị quá hạn.</p>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 
-  <!-- Manager view -->
-  <div *ngIf="!loading() && isManager() && managerData() as data" class="content">
-    <mat-card class="team-kpi-card">
-      <mat-card-header>
-        <mat-card-title>System Overview</mat-card-title>
-      </mat-card-header>
-      <mat-card-content>
-        <div class="team-stats">
-          <div class="stat">
-            <span class="label">Total Users</span>
-            <span class="value">{{ data.totalUsers }}</span>
-          </div>
-          <div class="stat">
-            <span class="label">Avg System KPI</span>
-            <span class="value">{{ (data.avgSystemKpi || 0) | number: '1.0-0' }}</span>
-          </div>
-          <div class="stat">
-            <span class="label">Completion Rate</span>
-            <span class="value">{{ (data.completionRate || 0) | number: '1.0-0' }}%</span>
-          </div>
-          <div class="stat" [class.alert]="data.overdueTasks > 0">
-            <span class="label">Overdue</span>
-            <span class="value">{{ data.overdueTasks }}</span>
-          </div>
+  <!-- TEAM LEAD VIEW -->
+  <div *ngIf="!loading() && isLead() && leadData() as data" class="dashboard-layout">
+    <!-- Top 4 Stats Grid -->
+    <div class="stats-overview-grid">
+      <div class="stat-card">
+        <div class="stat-icon-badge sky">
+          <span class="icon">groups</span>
         </div>
+        <div class="stat-details">
+          <span class="stat-title">Quy mô nhóm</span>
+          <span class="stat-value">{{ data.teamSize }} thành viên</span>
+        </div>
+      </div>
 
-        <div class="team-members">
-          <h3>Top Performers</h3>
-          <div *ngFor="let performer of data.topPerformers" class="member-item">
-            <div class="member-info">
-              <span class="name">{{ performer.userFullName }}</span>
-              <span class="completion">{{ (performer.kpiFinal || 0) | number: '1.0-0' }} — {{ performer.ranking }}</span>
+      <div class="stat-card">
+        <div class="stat-icon-badge indigo">
+          <span class="icon">stars</span>
+        </div>
+        <div class="stat-details">
+          <span class="stat-title">KPI Trung bình</span>
+          <span class="stat-value">{{ (data.avgKpi || 0) | number: '1.0-0' }}</span>
+        </div>
+      </div>
+
+      <div class="stat-card">
+        <div class="stat-icon-badge emerald">
+          <span class="icon">trending_up</span>
+        </div>
+        <div class="stat-details">
+          <span class="stat-title">Tỷ lệ hoàn thành</span>
+          <span class="stat-value">{{ (data.completionRate || 0) | number: '1.0-0' }}%</span>
+        </div>
+      </div>
+
+      <div class="stat-card" [class.alert-card]="data.overdueTasks > 0">
+        <div class="stat-icon-badge" [ngClass]="data.overdueTasks > 0 ? 'rose' : 'slate'">
+          <span class="icon">warning</span>
+        </div>
+        <div class="stat-details">
+          <span class="stat-title">Công việc quá hạn</span>
+          <span class="stat-value" [class.text-danger]="data.overdueTasks > 0">{{ data.overdueTasks }}</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Main Content 2-Col Grid -->
+    <div class="main-dashboard-grid">
+      <!-- Left Col -->
+      <div class="dashboard-col">
+        <!-- Progress Donut Card -->
+        <div class="dashboard-card card">
+          <div class="card-title-row">
+            <div class="title-with-icon">
+              <span class="icon card-icon">pie_chart</span>
+              <h3>Tiến độ công việc toàn nhóm</h3>
             </div>
-            <mat-progress-bar
-              mode="determinate"
-              [value]="performer.kpiFinal || 0"
-              [color]="getCompletionColor(performer.kpiFinal || 0)">
-            </mat-progress-bar>
+          </div>
+
+          <div class="donut-content-layout">
+            <div class="donut-chart-wrap">
+              <div class="donut-circle" [style.background]="donutGradient(data.statusBreakdown)">
+                <div class="donut-hole">
+                  <span class="donut-num">{{ data.statusBreakdown.done }}/{{ data.statusBreakdown.pending + data.statusBreakdown.inProgress + data.statusBreakdown.done + data.statusBreakdown.closedLate + data.statusBreakdown.cancelled }}</span>
+                  <span class="donut-sub">Đã xong</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="donut-legend-wrap">
+              <div class="legend-row">
+                <span class="legend-dot dot-done"></span>
+                <span class="legend-text">Hoàn thành</span>
+                <strong class="legend-val">{{ data.statusBreakdown.done }}</strong>
+              </div>
+              <div class="legend-row">
+                <span class="legend-dot dot-progress"></span>
+                <span class="legend-text">Đang thực hiện</span>
+                <strong class="legend-val">{{ data.statusBreakdown.inProgress }}</strong>
+              </div>
+              <div class="legend-row">
+                <span class="legend-dot dot-pending"></span>
+                <span class="legend-text">Chưa bắt đầu</span>
+                <strong class="legend-val">{{ data.statusBreakdown.pending }}</strong>
+              </div>
+              <div class="legend-row" *ngIf="data.statusBreakdown.closedLate">
+                <span class="legend-dot dot-late"></span>
+                <span class="legend-text">Hoàn thành trễ</span>
+                <strong class="legend-val">{{ data.statusBreakdown.closedLate }}</strong>
+              </div>
+              <div class="legend-row" *ngIf="data.statusBreakdown.cancelled">
+                <span class="legend-dot dot-cancelled"></span>
+                <span class="legend-text">Đã huỷ</span>
+                <strong class="legend-val">{{ data.statusBreakdown.cancelled }}</strong>
+              </div>
+            </div>
           </div>
         </div>
-      </mat-card-content>
-    </mat-card>
 
-    <ng-container *ngTemplateOutlet="taskInsights; context: {
-      overdueCount: data.overdueTasks,
-      upcomingCount: data.upcomingDeadlines.length,
-      breakdown: data.statusBreakdown,
-      overdueList: data.overdueTasksList
-    }"></ng-container>
+        <!-- Team Members KPI List -->
+        <div class="dashboard-card card">
+          <div class="card-title-row">
+            <div class="title-with-icon">
+              <span class="icon card-icon">group</span>
+              <h3>Thành viên nhóm</h3>
+            </div>
+            <span class="badge badge-info">{{ data.teamMembers.length }} thành viên</span>
+          </div>
+
+          <div class="members-ranking-list" *ngIf="data.teamMembers.length > 0">
+            <div class="member-rank-row" *ngFor="let member of data.teamMembers">
+              <div class="member-avatar">{{ initials(member.userFullName) }}</div>
+              <div class="member-meta">
+                <div class="member-name-row">
+                  <span class="member-name">{{ member.userFullName }}</span>
+                  <span class="member-score">{{ (member.kpiFinal || 0) | number: '1.0-0' }} pts</span>
+                </div>
+                <div class="custom-progress-bar">
+                  <div class="progress-fill" [style.width.%]="member.kpiFinal || 0"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="empty-placeholder" *ngIf="data.teamMembers.length === 0">
+            <span class="icon info-icon">info</span>
+            <p>Chưa có dữ liệu thành viên trong nhóm.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right Col -->
+      <div class="dashboard-col">
+        <!-- Overdue Tasks List -->
+        <div class="dashboard-card card">
+          <div class="card-title-row">
+            <div class="title-with-icon">
+              <span class="icon card-icon rose-icon">alarm</span>
+              <h3>Công việc trễ hạn</h3>
+            </div>
+            <span class="badge badge-danger" *ngIf="data.overdueTasksList.length > 0">{{ data.overdueTasksList.length }} trễ</span>
+          </div>
+
+          <div class="overdue-tasks-list" *ngIf="data.overdueTasksList.length > 0">
+            <div class="overdue-task-item" *ngFor="let task of data.overdueTasksList">
+              <div class="overdue-task-header">
+                <span class="task-title-text">{{ task.title }}</span>
+                <span class="badge-late">Trễ {{ daysOverdue(task.dueDate) }} ngày</span>
+              </div>
+              <div class="overdue-task-meta">
+                <span class="assignee-tag"><span class="icon">person</span> {{ task.currentAssignment?.assignee?.fullName || 'Chưa gán' }}</span>
+                <span class="date-tag"><span class="icon">event</span> {{ task.dueDate | date:'dd/MM/yyyy' }}</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="empty-placeholder" *ngIf="data.overdueTasksList.length === 0">
+            <span class="icon good-icon">verified</span>
+            <p>Tuyệt vời! Không có công việc nào bị trễ hạn trong nhóm.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MANAGER VIEW -->
+  <div *ngIf="!loading() && isManager() && managerData() as data" class="dashboard-layout">
+    <!-- Top 4 Stats Grid -->
+    <div class="stats-overview-grid">
+      <div class="stat-card">
+        <div class="stat-icon-badge sky">
+          <span class="icon">corporate_fare</span>
+        </div>
+        <div class="stat-details">
+          <span class="stat-title">Tổng nhân sự</span>
+          <span class="stat-value">{{ data.totalUsers }} nhân viên</span>
+        </div>
+      </div>
+
+      <div class="stat-card">
+        <div class="stat-icon-badge indigo">
+          <span class="icon">military_tech</span>
+        </div>
+        <div class="stat-details">
+          <span class="stat-title">KPI Toàn hệ thống</span>
+          <span class="stat-value">{{ (data.avgSystemKpi || 0) | number: '1.0-0' }}</span>
+        </div>
+      </div>
+
+      <div class="stat-card">
+        <div class="stat-icon-badge emerald">
+          <span class="icon">show_chart</span>
+        </div>
+        <div class="stat-details">
+          <span class="stat-title">Tỷ lệ hoàn thành</span>
+          <span class="stat-value">{{ (data.completionRate || 0) | number: '1.0-0' }}%</span>
+        </div>
+      </div>
+
+      <div class="stat-card" [class.alert-card]="data.overdueTasks > 0">
+        <div class="stat-icon-badge" [ngClass]="data.overdueTasks > 0 ? 'rose' : 'slate'">
+          <span class="icon">warning</span>
+        </div>
+        <div class="stat-details">
+          <span class="stat-title">Tổng việc trễ hạn</span>
+          <span class="stat-value" [class.text-danger]="data.overdueTasks > 0">{{ data.overdueTasks }}</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Main Content 2-Col Grid -->
+    <div class="main-dashboard-grid">
+      <!-- Left Col -->
+      <div class="dashboard-col">
+        <!-- Progress Donut Card -->
+        <div class="dashboard-card card">
+          <div class="card-title-row">
+            <div class="title-with-icon">
+              <span class="icon card-icon">pie_chart</span>
+              <h3>Phân bổ trạng thái công việc hệ thống</h3>
+            </div>
+          </div>
+
+          <div class="donut-content-layout">
+            <div class="donut-chart-wrap">
+              <div class="donut-circle" [style.background]="donutGradient(data.statusBreakdown)">
+                <div class="donut-hole">
+                  <span class="donut-num">{{ data.statusBreakdown.done }}/{{ data.statusBreakdown.pending + data.statusBreakdown.inProgress + data.statusBreakdown.done + data.statusBreakdown.closedLate + data.statusBreakdown.cancelled }}</span>
+                  <span class="donut-sub">Đã xong</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="donut-legend-wrap">
+              <div class="legend-row">
+                <span class="legend-dot dot-done"></span>
+                <span class="legend-text">Hoàn thành</span>
+                <strong class="legend-val">{{ data.statusBreakdown.done }}</strong>
+              </div>
+              <div class="legend-row">
+                <span class="legend-dot dot-progress"></span>
+                <span class="legend-text">Đang thực hiện</span>
+                <strong class="legend-val">{{ data.statusBreakdown.inProgress }}</strong>
+              </div>
+              <div class="legend-row">
+                <span class="legend-dot dot-pending"></span>
+                <span class="legend-text">Chưa bắt đầu</span>
+                <strong class="legend-val">{{ data.statusBreakdown.pending }}</strong>
+              </div>
+              <div class="legend-row" *ngIf="data.statusBreakdown.closedLate">
+                <span class="legend-dot dot-late"></span>
+                <span class="legend-text">Hoàn thành trễ</span>
+                <strong class="legend-val">{{ data.statusBreakdown.closedLate }}</strong>
+              </div>
+              <div class="legend-row" *ngIf="data.statusBreakdown.cancelled">
+                <span class="legend-dot dot-cancelled"></span>
+                <span class="legend-text">Đã huỷ</span>
+                <strong class="legend-val">{{ data.statusBreakdown.cancelled }}</strong>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Top Performers -->
+        <div class="dashboard-card card">
+          <div class="card-title-row">
+            <div class="title-with-icon">
+              <span class="icon card-icon">emoji_events</span>
+              <h3>Nhân sự xuất sắc (Top Performers)</h3>
+            </div>
+          </div>
+
+          <div class="members-ranking-list" *ngIf="data.topPerformers.length > 0">
+            <div class="member-rank-row" *ngFor="let performer of data.topPerformers">
+              <div class="member-avatar">{{ initials(performer.userFullName) }}</div>
+              <div class="member-meta">
+                <div class="member-name-row">
+                  <span class="member-name">{{ performer.userFullName }}</span>
+                  <span class="member-score">{{ (performer.kpiFinal || 0) | number: '1.0-0' }} pts</span>
+                </div>
+                <div class="custom-progress-bar">
+                  <div class="progress-fill" [style.width.%]="performer.kpiFinal || 0"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="empty-placeholder" *ngIf="data.topPerformers.length === 0">
+            <p>Chưa có dữ liệu xếp hạng kỳ này.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right Col -->
+      <div class="dashboard-col">
+        <!-- Overdue Tasks List -->
+        <div class="dashboard-card card">
+          <div class="card-title-row">
+            <div class="title-with-icon">
+              <span class="icon card-icon rose-icon">alarm</span>
+              <h3>Công việc trễ hạn cần đôn đốc</h3>
+            </div>
+            <span class="badge badge-danger" *ngIf="data.overdueTasksList.length > 0">{{ data.overdueTasksList.length }} trễ</span>
+          </div>
+
+          <div class="overdue-tasks-list" *ngIf="data.overdueTasksList.length > 0">
+            <div class="overdue-task-item" *ngFor="let task of data.overdueTasksList">
+              <div class="overdue-task-header">
+                <span class="task-title-text">{{ task.title }}</span>
+                <span class="badge-late">Trễ {{ daysOverdue(task.dueDate) }} ngày</span>
+              </div>
+              <div class="overdue-task-meta">
+                <span class="assignee-tag"><span class="icon">person</span> {{ task.currentAssignment?.assignee?.fullName || 'Chưa gán' }}</span>
+                <span class="date-tag"><span class="icon">event</span> {{ task.dueDate | date:'dd/MM/yyyy' }}</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="empty-placeholder" *ngIf="data.overdueTasksList.length === 0">
+            <span class="icon good-icon">check_circle</span>
+            <p>Không có công việc nào bị quá hạn trong toàn hệ thống.</p>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 </div>
-
-<!-- Shared "task insights" block: alert banner + progress donut + overdue timeline.
-     Rendered via ngTemplateOutlet in all three role views above so the layout stays
-     identical whether it's the member's own tasks or the team's. -->
-<ng-template #taskInsights let-overdueCount="overdueCount" let-upcomingCount="upcomingCount" let-breakdown="breakdown" let-overdueList="overdueList">
-  <mat-card class="insights-card" *ngIf="overdueCount > 0 || upcomingCount > 0">
-    <mat-card-content>
-      <div class="alert-banner" *ngIf="overdueCount > 0">
-        <span class="icon">warning</span>
-        <span>{{ overdueCount }} công việc đã quá hạn</span>
-      </div>
-      <div class="alert-banner upcoming" *ngIf="upcomingCount > 0">
-        <span class="icon">schedule</span>
-        <span>{{ upcomingCount }} công việc sắp đến hạn trong 24 giờ tới</span>
-      </div>
-    </mat-card-content>
-  </mat-card>
-
-  <mat-card class="insights-card">
-    <mat-card-header>
-      <mat-card-title>Tiến độ công việc</mat-card-title>
-    </mat-card-header>
-    <mat-card-content>
-      <div class="progress-donut-row">
-        <div class="donut" [style.background]="donutGradient(breakdown)">
-          <div class="donut-hole">
-            <span class="donut-value">{{ breakdown.done }}/{{ breakdown.pending + breakdown.inProgress + breakdown.done + breakdown.closedLate + breakdown.cancelled }}</span>
-            <span class="donut-label">Hoàn thành</span>
-          </div>
-        </div>
-        <div class="donut-legend">
-          <div class="legend-item"><span class="dot dot-done"></span>Hoàn thành <strong>{{ breakdown.done }}</strong></div>
-          <div class="legend-item"><span class="dot dot-progress"></span>Đang làm <strong>{{ breakdown.inProgress }}</strong></div>
-          <div class="legend-item"><span class="dot dot-pending"></span>Chưa bắt đầu <strong>{{ breakdown.pending }}</strong></div>
-          <div class="legend-item" *ngIf="breakdown.closedLate"><span class="dot dot-late"></span>Trễ hạn <strong>{{ breakdown.closedLate }}</strong></div>
-          <div class="legend-item" *ngIf="breakdown.cancelled"><span class="dot dot-cancelled"></span>Đã huỷ <strong>{{ breakdown.cancelled }}</strong></div>
-        </div>
-      </div>
-    </mat-card-content>
-  </mat-card>
-
-  <mat-card class="insights-card" *ngIf="overdueList.length > 0">
-    <mat-card-header>
-      <mat-card-title>Công việc trễ hạn</mat-card-title>
-    </mat-card-header>
-    <mat-card-content>
-      <div class="overdue-timeline">
-        <div class="overdue-row" *ngFor="let task of overdueList">
-          <span class="avatar">{{ initials(task.currentAssignment?.assignee?.fullName) }}</span>
-          <div class="overdue-info">
-            <span class="title">{{ task.title }}</span>
-            <span class="assignee">{{ task.currentAssignment?.assignee?.fullName || 'Chưa gán' }}</span>
-          </div>
-          <span class="due-date">{{ task.dueDate | date: 'dd/MM/yyyy' }}</span>
-          <span class="days-late">Trễ {{ daysOverdue(task.dueDate) }} ngày</span>
-        </div>
-      </div>
-    </mat-card-content>
-  </mat-card>
-</ng-template>

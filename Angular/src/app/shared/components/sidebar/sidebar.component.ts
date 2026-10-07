@@ -28,6 +28,7 @@ interface MenuItem {
               *ngFor="let item of getMenuItems() | slice:0:3"
               [routerLink]="item.route"
               routerLinkActive="active"
+              [routerLinkActiveOptions]="{ exact: isExact(item.route) }"
               class="nav-item"
               (click)="ui.closeSidebar()"
             >
@@ -45,6 +46,7 @@ interface MenuItem {
               *ngFor="let item of getMenuItems() | slice:3:6"
               [routerLink]="item.route"
               routerLinkActive="active"
+              [routerLinkActiveOptions]="{ exact: isExact(item.route) }"
               class="nav-item"
               (click)="ui.closeSidebar()"
             >
@@ -62,6 +64,7 @@ interface MenuItem {
               *ngFor="let item of getMenuItems() | slice:6"
               [routerLink]="item.route"
               routerLinkActive="active"
+              [routerLinkActiveOptions]="{ exact: isExact(item.route) }"
               class="nav-item"
               (click)="ui.closeSidebar()"
             >
@@ -85,38 +88,69 @@ interface MenuItem {
       position: fixed;
       left: 0;
       top: var(--navbar-height);
-      padding-top: 16px;
+      padding: 20px 14px;
       z-index: 250;
-      transition: transform 0.2s ease;
+      transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), background-color 0.2s ease;
+      border-right: 1px solid var(--color-border);
+      box-shadow: 2px 0 12px rgba(14, 165, 233, 0.04);
     }
-    .sidebar-menu { padding: 0 12px; }
-    .menu-section { margin-bottom: 20px; }
-    .menu-section h4 { margin: 12px 10px 8px 10px; font-size: 11px; color: var(--color-sidebar-text-muted); text-transform: uppercase; letter-spacing: 0.04em; }
-    .nav-list { display: flex; flex-direction: column; gap: 2px; }
+    .sidebar-menu { display: flex; flex-direction: column; gap: 20px; }
+    .menu-section { display: flex; flex-direction: column; gap: 4px; }
+    .menu-section h4 {
+      margin: 0 10px 8px 10px;
+      font-size: 11px;
+      font-weight: 800;
+      color: var(--color-text-light);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+    .nav-list { display: flex; flex-direction: column; gap: 4px; }
     .nav-item {
       display: flex;
       align-items: center;
       gap: 12px;
-      padding: 10px 12px;
+      padding: 10px 14px;
       border-radius: var(--radius-sm);
       text-decoration: none;
       color: var(--color-sidebar-text);
-      transition: background 0.15s;
+      transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
       cursor: pointer;
       position: relative;
-      font-size: 14px;
+      font-size: 13.5px;
+      font-weight: 600;
     }
-    .nav-item:hover { background: var(--color-sidebar-hover); }
-    .nav-item.active { background: var(--color-sidebar-active-bg); color: white; font-weight: 600; }
-    .icon { font-size: 17px; min-width: 22px; }
+    .nav-item .icon {
+      font-size: 20px;
+      min-width: 22px;
+      color: var(--color-primary);
+      transition: transform 0.2s ease;
+    }
+    .nav-item:hover {
+      background: var(--color-sidebar-hover);
+      color: var(--color-primary);
+      transform: translateX(3px);
+    }
+    .nav-item.active {
+      background: var(--gradient-primary);
+      color: #ffffff;
+      font-weight: 700;
+      box-shadow: 0 4px 14px rgba(14, 165, 233, 0.35);
+    }
+    .nav-item.active .icon {
+      color: #ffffff;
+    }
+    .nav-item:hover .icon {
+      transform: scale(1.1);
+    }
     .label { flex: 1; }
     .badge {
-      background: var(--color-danger);
+      background: #f43f5e;
       color: white;
-      border-radius: 18px;
+      border-radius: 999px;
       padding: 2px 8px;
       font-size: 11px;
-      font-weight: bold;
+      font-weight: 700;
+      box-shadow: 0 2px 6px rgba(244, 63, 94, 0.3);
     }
 
     .backdrop { display: none; }
@@ -124,7 +158,7 @@ interface MenuItem {
     @media (max-width: 900px) {
       .sidebar {
         transform: translateX(-100%);
-        box-shadow: var(--shadow-md);
+        box-shadow: var(--shadow-lg);
         height: calc(100vh - var(--navbar-height));
       }
       .sidebar.open { transform: translateX(0); }
@@ -132,7 +166,8 @@ interface MenuItem {
         display: block;
         position: fixed;
         inset: var(--navbar-height) 0 0 0;
-        background: rgba(15, 23, 42, 0.35);
+        background: rgba(15, 23, 42, 0.5);
+        backdrop-filter: blur(4px);
         z-index: 240;
       }
     }
@@ -156,6 +191,10 @@ export class SidebarComponent {
     { label: 'Nhân sự', icon: 'badge', route: '/users', roles: ['LEAD', 'MANAGER'] },
     { label: 'Cài đặt', icon: 'settings', route: '/settings', roles: ['MEMBER', 'LEAD', 'MANAGER'] }
   ];
+
+  isExact(route: string): boolean {
+    return route === '/tasks' || route === '/kpi' || route === '/settings';
+  }
 
   getMenuItems(): MenuItem[] {
     const role = this.authStore.user()?.role || '';

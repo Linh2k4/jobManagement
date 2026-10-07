@@ -61,6 +61,13 @@ export class LoginComponent {
     this.hidePassword.update(v => !v);
   }
 
+  fillAccount(email: string) {
+    this.form.patchValue({
+      email,
+      password: 'admin123'
+    });
+  }
+
   get emailError(): string {
     const control = this.form.get('email');
     if (control?.hasError('required')) return 'Email is required';

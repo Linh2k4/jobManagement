@@ -49,7 +49,7 @@ services:
   # 3. MinIO Object Storage (S3 Compatible)
   # ============================================================
   minio:
-    image: quay.io/minio/minio:latest
+    image: cgr.dev/chainguard/minio:latest
     container_name: job-management-minio
     restart: unless-stopped
     command: server /data --console-address ":9001"
@@ -64,21 +64,6 @@ services:
     networks:
       - job-management-network
 
-  # Auto create default bucket for Job Management
-  minio-init:
-    image: quay.io/minio/mc:latest
-    container_name: job-management-minio-init
-    depends_on:
-      - minio
-    entrypoint: >
-      /bin/sh -c "
-      sleep 3;
-      /usr/bin/mc alias set myminio http://minio:9000 minioadmin minioadmin;
-      /usr/bin/mc mb myminio/job-management || true;
-      exit 0;
-      "
-    networks:
-      - job-management-network
 
   # ============================================================
   # 4. Mailpit (Mock SMTP server & Web UI)

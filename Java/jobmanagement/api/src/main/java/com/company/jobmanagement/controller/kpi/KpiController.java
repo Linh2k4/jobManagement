@@ -145,21 +145,55 @@ public class KpiController extends BaseController {
                 ? kpiSnapshotRepository.findLockedSnapshotsByPeriod(currentPeriod)
                 : kpiSnapshotRepository.findTeamSnapshotsByLead(user.getId(), currentPeriod);
 
-        // Manual pagination (in real implementation, use custom query)
-        List<KpiResponse> responses = teamSnapshots.stream()
-                .skip((long) pageable.getPageNumber() * pageable.getPageSize())
-                .limit(pageable.getPageSize())
-                .map(snapshot -> {
-                    KpiResponse resp = new KpiResponse();
-                    resp.setUserId(snapshot.getUser().getId());
-                    resp.setUserFullName(snapshot.getUser().getFullName());
-                    resp.setKpiFinal(snapshot.getKpiFinal());
-                    resp.setRanking(snapshot.getRanking());
-                    return resp;
-                })
-                .collect(Collectors.toList());
-        
-        Page<KpiResponse> page = new PageImpl<>(responses, pageable, teamSnapshots.size());
+        List<KpiResponse> responses;
+        if (!teamSnapshots.isEmpty()) {
+            responses = teamSnapshots.stream()
+                    .map(snapshot -> {
+                        KpiResponse resp = new KpiResponse();
+                        resp.setUserId(snapshot.getUser().getId());
+                        resp.setUserFullName(snapshot.getUser().getFullName());
+                        resp.setKpiFinal(snapshot.getKpiFinal());
+                        resp.setRanking(snapshot.getRanking());
+                        return resp;
+                    })
+                    .collect(Collectors.toList());
+        } else {
+            // Real-time calculation fallback when no locked snapshots exist
+            List<User> targetUsers = user.isManager()
+                    ? userRepository.findByRoleAndActive(Role.MEMBER)
+                    : userRepository.findByLeadId(user.getId());
+
+            responses = targetUsers.stream()
+                    .map(targetUser -> {
+                        Long groupId = resolveGroupId(targetUser.getId(), null);
+                        KpiComponent kpi = kpiCacheService.getOrCalculateKpi(targetUser.getId(), groupId, currentPeriod);
+                        KpiResponse resp = kpiMapper.toDTO(kpi);
+                        if (resp.getUserFullName() == null) {
+                            resp.setUserFullName(targetUser.getFullName());
+                        }
+                        if (resp.getUserId() == null) {
+                            resp.setUserId(targetUser.getId());
+                        }
+                        BigDecimal finalScore = kpi.getKpiFinal() != null ? kpi.getKpiFinal() : kpi.getAutoScore();
+                        resp.setKpiFinal(finalScore != null ? finalScore : BigDecimal.ZERO);
+                        resp.setRanking(kpi.calculateRanking());
+                        return resp;
+                    })
+                    .sorted((a, b) -> {
+                        BigDecimal scoreA = a.getKpiFinal() != null ? a.getKpiFinal() : BigDecimal.ZERO;
+                        BigDecimal scoreB = b.getKpiFinal() != null ? b.getKpiFinal() : BigDecimal.ZERO;
+                        return scoreB.compareTo(scoreA);
+                    })
+                    .collect(Collectors.toList());
+        }
+
+        int start = (int) pageable.getOffset();
+        int end = Math.min(start + pageable.getPageSize(), responses.size());
+        List<KpiResponse> pagedResponses = (start < responses.size())
+                ? responses.subList(start, end)
+                : List.of();
+
+        Page<KpiResponse> page = new PageImpl<>(pagedResponses, pageable, responses.size());
         return ok(ApiResponse.success(page));
     }
 

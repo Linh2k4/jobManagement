@@ -86,7 +86,7 @@ export class UserFormComponent implements OnInit {
       fullName: ['', Validators.required],
       email: ['', [Validators.required, Validators.email]],
       role: ['MEMBER', Validators.required],
-      password: ['', [Validators.required, Validators.minLength(8)]]
+      password: ['', [Validators.required, Validators.minLength(6)]]
     });
   }
 
@@ -114,6 +114,16 @@ export class UserFormComponent implements OnInit {
     });
   }
 
+  private extractErrorMessage(err: any, fallback: string): string {
+    if (err?.error?.errors && typeof err.error.errors === 'object') {
+      const fieldErrors = Object.values(err.error.errors).filter(Boolean);
+      if (fieldErrors.length > 0) {
+        return fieldErrors.join('; ');
+      }
+    }
+    return err?.error?.message || fallback;
+  }
+
   onSubmit() {
     if (!this.form.valid) return;
     this.saving = true;
@@ -122,12 +132,12 @@ export class UserFormComponent implements OnInit {
     if (this.isEdit && this.userId != null) {
       this.userService.updateUser(this.userId, { fullName: this.form.value.fullName, role: this.form.value.role }).subscribe({
         next: () => { this.saving = false; this.router.navigate(['/users']); },
-        error: (err) => { this.saving = false; this.error = err?.error?.message || 'Cập nhật thất bại.'; }
+        error: (err) => { this.saving = false; this.error = this.extractErrorMessage(err, 'Cập nhật thất bại.'); }
       });
     } else {
       this.userService.createUser(this.form.value).subscribe({
         next: () => { this.saving = false; this.router.navigate(['/users']); },
-        error: (err) => { this.saving = false; this.error = err?.error?.message || 'Tạo người dùng thất bại.'; }
+        error: (err) => { this.saving = false; this.error = this.extractErrorMessage(err, 'Tạo người dùng thất bại.'); }
       });
     }
   }
