@@ -38,6 +38,8 @@ public class Task {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "task_type_id", nullable = false)
     private TaskType taskType;
@@ -106,6 +108,8 @@ public class Task {
     @Column
     private LocalDate periodMonth;
 
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "created_by", nullable = false)
     private User createdBy;
@@ -113,6 +117,8 @@ public class Task {
     // Scope.md §13: which Group's KPI this task counts toward — set from the
     // assignee's primary Group on assignment, or explicitly when a Lead
     // assigns within a specific one of the member's several groups.
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "group_id")
     private Group group;
@@ -135,16 +141,22 @@ public class Task {
     @Column(columnDefinition = "TEXT")
     private String reviewNote;
 
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
     @OneToMany(mappedBy = "task", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     @Builder.Default
     private List<GroupSubtask> groupSubtasks = new ArrayList<>();
 
     // Includes both grouped and ungrouped subtasks (groupSubtask == null for
     // the latter) — callers that need just the tree headers use groupSubtasks.
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
     @OneToMany(mappedBy = "task", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     @Builder.Default
     private List<Subtask> subtasks = new ArrayList<>();
 
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
     @OneToMany(mappedBy = "task", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     @Builder.Default
     private List<TaskAssignment> assignments = new ArrayList<>();
