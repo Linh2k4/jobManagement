@@ -132,6 +132,9 @@ public class Task {
     @Column
     private Integer target;
 
+    @Column(columnDefinition = "TEXT")
+    private String reviewNote;
+
     @OneToMany(mappedBy = "task", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     @Builder.Default
     private List<GroupSubtask> groupSubtasks = new ArrayList<>();

@@ -30,5 +30,7 @@
     <include file="db/changelog/V20__multi_group_kpi_split.sql" relativeToChangelogFile="false"/>
     <include file="db/changelog/V21__seed_more_dev_data.sql" relativeToChangelogFile="false"/>
     <include file="db/changelog/V22__add_user_profile_fields.sql" relativeToChangelogFile="false"/>
+    <include file="db/changelog/V23__add_waiting_approval_and_review_note.sql" relativeToChangelogFile="false"/>
+    <include file="db/changelog/V24__allow_multiple_task_assignments.sql" relativeToChangelogFile="false"/>
 
 </databaseChangeLog>

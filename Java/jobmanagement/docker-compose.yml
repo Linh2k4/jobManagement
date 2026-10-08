@@ -49,7 +49,7 @@ services:
   # 3. MinIO Object Storage (S3 Compatible)
   # ============================================================
   minio:
-    image: cgr.dev/chainguard/minio:latest
+    image: minio/minio:latest
     container_name: job-management-minio
     restart: unless-stopped
     command: server /data --console-address ":9001"

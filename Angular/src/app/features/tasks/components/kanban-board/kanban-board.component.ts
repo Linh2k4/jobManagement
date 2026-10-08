@@ -47,7 +47,7 @@ import { KanbanBoard, KanbanColumn, KanbanTask, TaskTypeSummary, TimeCategory } 
           </div>
 
           <!-- QUICK ADD -->
-          <div class="quick-add-box">
+          <div class="quick-add-box" *ngIf="!authStore.isMember()">
             <select [(ngModel)]="quickAddType.todo" class="quick-select">
               <option [ngValue]="null" disabled selected>Loại...</option>
               <option *ngFor="let t of taskTypes" [ngValue]="t.id">{{ t.name }}</option>
@@ -125,6 +125,7 @@ import { KanbanBoard, KanbanColumn, KanbanTask, TaskTypeSummary, TimeCategory } 
         <span class="task-type-badge" [ngClass]="card.timeCategory">{{ typeLabel(card.timeCategory) }}</span>
         <div class="card-status-badges">
           <span class="priority-badge" *ngIf="card.priority" [ngClass]="'priority-' + card.priority">{{ card.priority }}</span>
+          <span class="badge-alert waiting" *ngIf="card.status === 'WAITING_APPROVAL'">CHỜ DUYỆT</span>
           <span class="badge-alert overdue" *ngIf="card.isOverdue">QUÁ HẠN</span>
           <span class="badge-alert late" *ngIf="card.status === 'CLOSED_LATE'">TRỄ HẠN</span>
         </div>
@@ -370,6 +371,7 @@ import { KanbanBoard, KanbanColumn, KanbanTask, TaskTypeSummary, TimeCategory } 
       padding: 2px 6px;
       border-radius: 4px;
     }
+    .badge-alert.waiting { background: #fef3c7; color: #b45309; border: 1px solid #fde68a; }
     .badge-alert.overdue { background: #ffe4e6; color: #e11d48; border: 1px solid #fecdd3; }
     .badge-alert.late { background: #fef3c7; color: #d97706; border: 1px solid #fde68a; }
 

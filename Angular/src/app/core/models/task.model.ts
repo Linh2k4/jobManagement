@@ -1,4 +1,4 @@
-export type TaskStatus = 'PENDING' | 'IN_PROGRESS' | 'DONE' | 'CLOSED_LATE' | 'CANCELLED';
+export type TaskStatus = 'PENDING' | 'IN_PROGRESS' | 'WAITING_APPROVAL' | 'DONE' | 'CLOSED_LATE' | 'CANCELLED';
 export type TaskPriority = 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT';
 export type Difficulty = 1 | 2 | 3 | 4 | 5;
 export type TimeCategory = 'FAST' | 'OFTEN' | 'MULTI_STEP';
@@ -48,9 +48,11 @@ export interface Task {
   isTarget?: boolean;
   estimateTarget?: number;
   target?: number;
+  reviewNote?: string;
   groupSubtasks?: GroupSubtask[];
   subtasks?: Subtask[];
   currentAssignment?: TaskAssignmentInfo;
+  currentAssignments?: TaskAssignmentInfo[];
   createdAt: string;
   updatedAt: string;
 }
