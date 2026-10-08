@@ -77,14 +77,20 @@ public class TaskResponse {
     @Schema(description = "Actual target value so far, if isTarget", example = "75")
     private Integer target;
 
+    @Schema(description = "Review feedback or rejection reason from Leader/Manager")
+    private String reviewNote;
+
     @Schema(description = "Group headers for this task's subtasks (optional grouping)")
     private List<GroupSubtaskResponse> groupSubtasks;
 
     @Schema(description = "All subtasks — grouped (groupSubtaskId set) and ungrouped (null)")
     private List<SubtaskResponse> subtasks;
 
-    @Schema(description = "Current assignment (who is working on it)")
+    @Schema(description = "Current assignment (primary assignee)")
     private TaskAssignmentResponse currentAssignment;
+
+    @Schema(description = "All current active assignments (supporting multiple assignees)")
+    private List<TaskAssignmentResponse> currentAssignments;
 
     @Schema(description = "When task was created (ISO 8601)", example = "2026-06-20T10:30:00+07:00")
     private ZonedDateTime createdAt;

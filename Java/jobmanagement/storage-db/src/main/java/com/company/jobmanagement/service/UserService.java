@@ -124,8 +124,8 @@ public class UserService {
      */
     public List<User> listAllUsers() {
         User currentUserObj = currentUser.getCurrentUser();
-        if (currentUserObj.getRole() != Role.MANAGER) {
-            throw new ForbiddenOperationException("Only managers can list users");
+        if (currentUserObj.getRole() != Role.MANAGER && currentUserObj.getRole() != Role.LEAD) {
+            throw new ForbiddenOperationException("Only managers and leads can list users");
         }
         return userRepository.findAll();
     }

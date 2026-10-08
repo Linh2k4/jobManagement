@@ -340,6 +340,60 @@ public class TaskController extends BaseController {
     }
 
     /**
+     * Submit task for completion approval.
+     */
+    @PostMapping("/{taskId}/submit-completion")
+    @Operation(
+        summary = "Submit task for completion approval",
+        description = "Submit task for Leader/Admin review. Status becomes WAITING_APPROVAL.",
+        operationId = "submitTaskCompletion"
+    )
+    @SecurityRequirement(name = "bearer-jwt")
+    public ResponseEntity<ApiResponse<TaskResponse>> submitCompletion(@PathVariable Long taskId) {
+        Task task = taskService.submitCompletion(taskId);
+        TaskResponse response = taskMapper.toDTO(task);
+        return ok(ApiResponse.success("Yêu cầu duyệt hoàn thành đã được gửi", response));
+    }
+
+    /**
+     * Approve task completion. Creator (Leader) or Admin only.
+     */
+    @PostMapping("/{taskId}/approve-completion")
+    @Operation(
+        summary = "Approve task completion",
+        description = "Approve task completion. Status becomes DONE. Creator Leader or Manager only.",
+        operationId = "approveTaskCompletion"
+    )
+    @SecurityRequirement(name = "bearer-jwt")
+    public ResponseEntity<ApiResponse<TaskResponse>> approveCompletion(
+            @PathVariable Long taskId,
+            @RequestBody(required = false) Map<String, String> request) {
+        String note = request != null ? request.get("note") : null;
+        Task task = taskService.approveCompletion(taskId, note);
+        TaskResponse response = taskMapper.toDTO(task);
+        return ok(ApiResponse.success("Đã duyệt hoàn thành công việc", response));
+    }
+
+    /**
+     * Reject task completion. Creator (Leader) or Admin only.
+     */
+    @PostMapping("/{taskId}/reject-completion")
+    @Operation(
+        summary = "Reject task completion",
+        description = "Reject task completion with reasons. Status returns to IN_PROGRESS. Creator Leader or Manager only.",
+        operationId = "rejectTaskCompletion"
+    )
+    @SecurityRequirement(name = "bearer-jwt")
+    public ResponseEntity<ApiResponse<TaskResponse>> rejectCompletion(
+            @PathVariable Long taskId,
+            @RequestBody Map<String, String> request) {
+        String reason = request != null ? request.get("reason") : "";
+        Task task = taskService.rejectCompletion(taskId, reason);
+        TaskResponse response = taskMapper.toDTO(task);
+        return ok(ApiResponse.success("Đã từ chối hoàn thành công việc", response));
+    }
+
+    /**
      * Cancel a task (sets status to CANCELLED).
      * Only the task creator or manager can cancel.
      *

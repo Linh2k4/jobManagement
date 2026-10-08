@@ -77,10 +77,10 @@ import { DeadlineExtension } from '../../../../core/models';
 
           <div class="request-body">
             <div class="user-row">
-              <div class="user-avatar">{{ initials(r.requestedBy?.fullName) }}</div>
+              <div class="user-avatar">{{ initials(r.requestedBy.fullName) }}</div>
               <div class="user-meta">
-                <strong>{{ r.requestedBy?.fullName }}</strong>
-                <span class="user-role">{{ r.requestedBy?.role }}</span>
+                <strong>{{ r.requestedBy.fullName }}</strong>
+                <span class="user-role">{{ r.requestedBy.role }}</span>
               </div>
             </div>
 

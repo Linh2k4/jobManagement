@@ -227,4 +227,42 @@ public class TaskAssignmentController extends BaseController {
         TaskAssignmentResponse response = taskAssignmentMapper.toDTO(assignment);
         return ok(ApiResponse.success(response));
     }
+
+    /**
+     * Unassign user or all users from task.
+     * Creator (Leader) or Manager only.
+     */
+    @DeleteMapping
+    @Operation(
+        summary = "Unassign user from task",
+        description = "Remove assignment for specific user or all users from task. Creator or Manager only.",
+        operationId = "unassignTaskUser"
+    )
+    @SecurityRequirement(name = "bearer-jwt")
+    public ResponseEntity<ApiResponse<Void>> unassignTaskUser(
+            @PathVariable Long taskId,
+            @RequestParam(required = false) Long assigneeId) {
+        if (assigneeId != null) {
+            taskAssignmentService.unassignUserFromTask(taskId, assigneeId);
+        } else {
+            taskAssignmentService.unassignTask(taskId);
+        }
+        return ok(ApiResponse.success("Đã xóa người tham gia khỏi công việc"));
+    }
+
+    /**
+     * Unassign all current users from task (legacy endpoint).
+     * Creator (Leader) or Manager only.
+     */
+    @DeleteMapping("/current")
+    @Operation(
+        summary = "Unassign all users from task",
+        description = "Remove current assignments from task. Creator or Manager only.",
+        operationId = "unassignTask"
+    )
+    @SecurityRequirement(name = "bearer-jwt")
+    public ResponseEntity<ApiResponse<Void>> unassignTask(@PathVariable Long taskId) {
+        taskAssignmentService.unassignTask(taskId);
+        return ok(ApiResponse.success("Đã hủy phân công công việc"));
+    }
 }

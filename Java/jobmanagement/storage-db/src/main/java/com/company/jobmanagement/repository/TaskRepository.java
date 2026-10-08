@@ -107,17 +107,17 @@ public interface TaskRepository extends JpaRepository<Task, Long> {
             Pageable pageable);
 
     /**
-     * Find tasks by multiple criteria (status, type, section, date range).
+     * Find tasks by multiple criteria (status, type, section, date range, keyword).
      */
     @Query("SELECT DISTINCT t FROM Task t " +
            "JOIN FETCH t.taskType tt " +
            "JOIN FETCH t.createdBy " +
-           "LEFT JOIN FETCH t.subtasks st " +
            "WHERE (:status IS NULL OR t.status = :status) " +
            "AND (:taskTypeId IS NULL OR t.taskType.id = :taskTypeId) " +
            "AND (:section IS NULL OR t.section = :section) " +
            "AND (:dueDateFrom IS NULL OR t.dueDate >= :dueDateFrom) " +
            "AND (:dueDateTo IS NULL OR t.dueDate <= :dueDateTo) " +
+           "AND (:search IS NULL OR LOWER(t.title) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%')) OR LOWER(t.description) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%'))) " +
            "AND t.status != 'CANCELLED' " +
            "ORDER BY t.createdAt DESC")
     Page<Task> findByMultipleCriteria(
@@ -126,6 +126,59 @@ public interface TaskRepository extends JpaRepository<Task, Long> {
             @Param("section") String section,
             @Param("dueDateFrom") LocalDate dueDateFrom,
             @Param("dueDateTo") LocalDate dueDateTo,
+            @Param("search") String search,
+            Pageable pageable);
+
+    /**
+     * Find tasks for Lead (created by lead or assigned to lead) with criteria.
+     */
+    @Query("SELECT DISTINCT t FROM Task t " +
+           "JOIN FETCH t.taskType tt " +
+           "JOIN FETCH t.createdBy " +
+           "LEFT JOIN t.assignments ta ON ta.isCurrent = true " +
+           "WHERE (t.createdBy.id = :leadId OR ta.assignee.id = :leadId) " +
+           "AND (:status IS NULL OR t.status = :status) " +
+           "AND (:taskTypeId IS NULL OR t.taskType.id = :taskTypeId) " +
+           "AND (:section IS NULL OR t.section = :section) " +
+           "AND (:dueDateFrom IS NULL OR t.dueDate >= :dueDateFrom) " +
+           "AND (:dueDateTo IS NULL OR t.dueDate <= :dueDateTo) " +
+           "AND (:search IS NULL OR LOWER(t.title) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%')) OR LOWER(t.description) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%'))) " +
+           "AND t.status != 'CANCELLED' " +
+           "ORDER BY t.createdAt DESC")
+    Page<Task> findForLeadCriteria(
+            @Param("leadId") Long leadId,
+            @Param("status") TaskStatus status,
+            @Param("taskTypeId") Long taskTypeId,
+            @Param("section") String section,
+            @Param("dueDateFrom") LocalDate dueDateFrom,
+            @Param("dueDateTo") LocalDate dueDateTo,
+            @Param("search") String search,
+            Pageable pageable);
+
+    /**
+     * Find tasks for Member (only assigned to member) with criteria.
+     */
+    @Query("SELECT DISTINCT t FROM Task t " +
+           "JOIN FETCH t.taskType tt " +
+           "JOIN FETCH t.createdBy " +
+           "JOIN t.assignments ta " +
+           "WHERE ta.assignee.id = :memberId AND ta.isCurrent = true " +
+           "AND (:status IS NULL OR t.status = :status) " +
+           "AND (:taskTypeId IS NULL OR t.taskType.id = :taskTypeId) " +
+           "AND (:section IS NULL OR t.section = :section) " +
+           "AND (:dueDateFrom IS NULL OR t.dueDate >= :dueDateFrom) " +
+           "AND (:dueDateTo IS NULL OR t.dueDate <= :dueDateTo) " +
+           "AND (:search IS NULL OR LOWER(t.title) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%')) OR LOWER(t.description) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%'))) " +
+           "AND t.status != 'CANCELLED' " +
+           "ORDER BY t.createdAt DESC")
+    Page<Task> findForMemberCriteria(
+            @Param("memberId") Long memberId,
+            @Param("status") TaskStatus status,
+            @Param("taskTypeId") Long taskTypeId,
+            @Param("section") String section,
+            @Param("dueDateFrom") LocalDate dueDateFrom,
+            @Param("dueDateTo") LocalDate dueDateTo,
+            @Param("search") String search,
             Pageable pageable);
 
     /**

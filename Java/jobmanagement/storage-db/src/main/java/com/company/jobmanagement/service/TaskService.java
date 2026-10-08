@@ -21,6 +21,9 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import com.company.jobmanagement.model.enums.NotificationType;
+import com.company.jobmanagement.model.enums.Role;
+import com.company.jobmanagement.repository.TaskCommentRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -30,6 +33,7 @@ import java.time.ZonedDateTime;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 
 @Service
 @RequiredArgsConstructor
@@ -50,6 +54,8 @@ public class TaskService {
     private final TaskAssignmentService taskAssignmentService;
     private final UserRepository userRepository;
     private final GroupMembershipRepository groupMembershipRepository;
+    private final NotificationService notificationService;
+    private final TaskCommentRepository taskCommentRepository;
 
     /**
      * WCR/VI/EA are computed from the current assignee's tasks due in a given
@@ -70,11 +76,20 @@ public class TaskService {
                 ));
     }
 
+    public boolean canManageTask(Task task, User user) {
+        if (user == null || task == null) return false;
+        if (user.isManager() || user.isLead()) return true;
+        if (task.getCreatedBy() != null && task.getCreatedBy().getId().equals(user.getId())) {
+            return true;
+        }
+        return false;
+    }
+
     public Task createTask(Task task) {
         User currentUser = this.currentUser.getCurrentUser();
         TaskType taskType = taskTypeService.getTaskType(task.getTaskType().getId());
 
-        // Validate task creation permissions based on role and task type
+        // Validate task creation permissions: Leader and Admin only
         validateTaskCreationPermission(currentUser, taskType);
 
         task.setCreatedBy(currentUser);
@@ -89,25 +104,8 @@ public class TaskService {
     }
 
     private void validateTaskCreationPermission(User currentUser, TaskType taskType) {
-        switch (taskType.getTimeCategory()) {
-            case FAST:
-                // Member can create Fast tasks only (self-assigned to Manager)
-                if (!currentUser.isMember()) {
-                    throw new ForbiddenOperationException("Only Members can create FAST tasks");
-                }
-                break;
-            case OFTEN:
-                // Lead can create Often tasks
-                if (!currentUser.isLead() && !currentUser.isManager()) {
-                    throw new ForbiddenOperationException("Only Leads or Manager can create OFTEN tasks");
-                }
-                break;
-            case MULTI_STEP:
-                // Manager/Lead can create Multi-step tasks
-                if (!currentUser.isManager() && !currentUser.isLead()) {
-                    throw new ForbiddenOperationException("Only Manager or Leads can create MULTI_STEP tasks");
-                }
-                break;
+        if (currentUser.isMember()) {
+            throw new ForbiddenOperationException("Chỉ Leader và Admin mới có quyền tạo công việc mới");
         }
     }
 
@@ -176,11 +174,18 @@ public class TaskService {
     public Task getTask(Long id) {
         Task task = taskRepository.findByIdWithDetails(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Task not found with id: " + id));
-        // taskType/createdBy are JOIN FETCHed above; groupSubtasks/subtasks/
-        // assignments are collections (can't JOIN FETCH more than one bag in
-        // one query) — touch them here, still inside the transaction, so
-        // TaskMapper can read them after this method returns (open-in-view
-        // is disabled).
+
+        User user = this.currentUser.getCurrentUser();
+        // Member can only view tasks they participate in (assigned to) or created
+        if (user.isMember()) {
+            boolean isAssigned = task.getAssignments().stream()
+                    .anyMatch(a -> a.getIsCurrent() != null && a.getIsCurrent() && a.getAssignee().getId().equals(user.getId()));
+            boolean isCreator = task.getCreatedBy() != null && task.getCreatedBy().getId().equals(user.getId());
+            if (!isAssigned && !isCreator) {
+                throw new ForbiddenOperationException("Bạn chỉ có quyền xem các công việc mình được phân công tham gia");
+            }
+        }
+
         task.getGroupSubtasks().size();
         task.getSubtasks().forEach(s -> s.getSteps().size());
         task.getAssignments().forEach(a -> {
@@ -208,10 +213,8 @@ public class TaskService {
         if (currentUser.isManager()) {
             return taskRepository.findAll();
         } else if (currentUser.isLead()) {
-            // Lead sees tasks created by members in their team
             return taskRepository.findByCreatedById(currentUser.getId());
         } else {
-            // Member sees their own and assigned tasks
             return taskRepository.findAssignedToUser(currentUser.getId());
         }
     }
@@ -225,9 +228,9 @@ public class TaskService {
         Task task = getTask(id);
         User currentUser = this.currentUser.getCurrentUser();
 
-        // Only creator or Manager can update
-        if (!task.getCreatedBy().getId().equals(currentUser.getId()) && !currentUser.isManager()) {
-            throw new ForbiddenOperationException("Only creator or Manager can update this task");
+        // Admin has full control; Leader has control on tasks they created
+        if (!canManageTask(task, currentUser)) {
+            throw new ForbiddenOperationException("Chỉ người tạo việc (Leader) hoặc Admin mới có quyền chỉnh sửa công việc này");
         }
 
         if (taskUpdates.getTitle() != null) {
@@ -248,32 +251,173 @@ public class TaskService {
     }
 
     public Task updateTaskStatus(Long id, TaskStatus newStatus) {
+        if (newStatus == TaskStatus.WAITING_APPROVAL) {
+            return submitCompletion(id);
+        } else if (newStatus == TaskStatus.DONE) {
+            User currentUser = this.currentUser.getCurrentUser();
+            Task task = getTask(id);
+            if (canManageTask(task, currentUser)) {
+                return approveCompletion(id, null);
+            } else {
+                return submitCompletion(id);
+            }
+        }
+
         Task task = getTask(id);
         User currentUser = this.currentUser.getCurrentUser();
 
-        // Current assignee can update status
-        task.getAssignments().stream()
-                .filter(TaskAssignment::getIsCurrent)
-                .findFirst()
-                .ifPresentOrElse(
-                    assignment -> {
-                        if (!assignment.getAssignee().getId().equals(currentUser.getId())) {
-                            throw new ForbiddenOperationException("Only current assignee can update task status");
-                        }
-                    },
-                    () -> {
-                        throw new ForbiddenOperationException("Task has no current assignee");
-                    }
-                );
-
-        task.setStatus(newStatus);
-        if (newStatus == TaskStatus.DONE) {
-            task.setCompletedAt(ZonedDateTime.now());
+        // Current assignee or manager/creator can start or update to other statuses
+        boolean isAssignee = task.getAssignments().stream()
+                .anyMatch(a -> a.getIsCurrent() != null && a.getIsCurrent() && a.getAssignee().getId().equals(currentUser.getId()));
+        if (!isAssignee && !canManageTask(task, currentUser)) {
+            throw new ForbiddenOperationException("Chỉ người được giao việc hoặc quản lý mới có quyền đổi trạng thái công việc này");
         }
 
+        task.setStatus(newStatus);
         task.setUpdatedAt(ZonedDateTime.now());
         Task updated = taskRepository.save(task);
         invalidateKpiForCurrentAssignee(updated);
+        return updated;
+    }
+
+    public Task submitCompletion(Long id) {
+        Task task = getTask(id);
+        User user = this.currentUser.getCurrentUser();
+
+        boolean isAssignee = task.getAssignments().stream()
+                .anyMatch(a -> a.getIsCurrent() != null && a.getIsCurrent() && a.getAssignee().getId().equals(user.getId()));
+        if (!isAssignee && !canManageTask(task, user)) {
+            throw new ForbiddenOperationException("Chỉ người được phân công mới có quyền gửi duyệt hoàn thành");
+        }
+
+        if (task.getStatus() == TaskStatus.DONE || task.getStatus() == TaskStatus.CLOSED_LATE) {
+            throw new ForbiddenOperationException("Công việc đã được hoàn thành");
+        }
+        if (task.getStatus() == TaskStatus.CANCELLED) {
+            throw new ForbiddenOperationException("Công việc đã bị hủy");
+        }
+
+        task.setStatus(TaskStatus.WAITING_APPROVAL);
+        task.setUpdatedAt(ZonedDateTime.now());
+        Task updated = taskRepository.save(task);
+
+        // Send notifications to Leader (task creator) and Admin (Manager)
+        CompletableFuture.runAsync(() -> {
+            String message = user.getFullName() + " đã gửi yêu cầu duyệt hoàn thành công việc: \"" + task.getTitle() + "\"";
+            if (task.getCreatedBy() != null && !task.getCreatedBy().getId().equals(user.getId())) {
+                notificationService.notify(
+                        task.getCreatedBy(),
+                        NotificationType.SYSTEM,
+                        "Yêu cầu duyệt hoàn thành công việc",
+                        message,
+                        task.getId()
+                );
+            }
+            List<User> managers = userRepository.findByRoleAndActive(Role.MANAGER);
+            for (User manager : managers) {
+                if (!manager.getId().equals(user.getId()) && (task.getCreatedBy() == null || !manager.getId().equals(task.getCreatedBy().getId()))) {
+                    notificationService.notify(
+                            manager,
+                            NotificationType.SYSTEM,
+                            "Yêu cầu duyệt hoàn thành công việc",
+                            message,
+                            task.getId()
+                    );
+                }
+            }
+        });
+
+        return updated;
+    }
+
+    public Task approveCompletion(Long id, String note) {
+        Task task = getTask(id);
+        User user = this.currentUser.getCurrentUser();
+
+        if (!canManageTask(task, user)) {
+            throw new ForbiddenOperationException("Chỉ người tạo việc (Leader) hoặc Admin mới có quyền duyệt hoàn thành");
+        }
+
+        LocalDate dueDate = task.getDueDate();
+        boolean isLate = dueDate != null && dueDate.isBefore(LocalDate.now());
+        task.setStatus(isLate ? TaskStatus.CLOSED_LATE : TaskStatus.DONE);
+        task.setCompletedAt(ZonedDateTime.now());
+        task.setReviewNote(note);
+        task.setUpdatedAt(ZonedDateTime.now());
+        Task updated = taskRepository.save(task);
+        invalidateKpiForCurrentAssignee(updated);
+
+        if (note != null && !note.isBlank()) {
+            taskCommentRepository.save(TaskComment.builder()
+                    .task(task)
+                    .user(user)
+                    .content("[Duyệt hoàn thành]: " + note)
+                    .createdAt(ZonedDateTime.now())
+                    .build());
+        }
+
+        // Notify current assignee
+        task.getAssignments().stream()
+                .filter(TaskAssignment::getIsCurrent)
+                .findFirst()
+                .ifPresent(assignment -> {
+                    String msg = "Công việc \"" + task.getTitle() + "\" đã được " + user.getFullName() + " duyệt hoàn thành!";
+                    if (note != null && !note.isBlank()) {
+                        msg += " Nhận xét: " + note;
+                    }
+                    notificationService.notify(
+                            assignment.getAssignee(),
+                            NotificationType.SYSTEM,
+                            "Công việc đã được duyệt hoàn thành",
+                            msg,
+                            task.getId()
+                    );
+                });
+
+        return updated;
+    }
+
+    public Task rejectCompletion(Long id, String reason) {
+        if (reason == null || reason.trim().isEmpty()) {
+            throw new IllegalArgumentException("Lý do từ chối là bắt buộc");
+        }
+
+        Task task = getTask(id);
+        User user = this.currentUser.getCurrentUser();
+
+        if (!canManageTask(task, user)) {
+            throw new ForbiddenOperationException("Chỉ người tạo việc (Leader) hoặc Admin mới có quyền từ chối duyệt");
+        }
+
+        // Return to unfinished state (IN_PROGRESS)
+        task.setStatus(TaskStatus.IN_PROGRESS);
+        task.setReviewNote(reason);
+        task.setUpdatedAt(ZonedDateTime.now());
+        Task updated = taskRepository.save(task);
+        invalidateKpiForCurrentAssignee(updated);
+
+        // Add a comment to task comment thread
+        taskCommentRepository.save(TaskComment.builder()
+                .task(task)
+                .user(user)
+                .content("[Từ chối hoàn thành]: " + reason)
+                .createdAt(ZonedDateTime.now())
+                .build());
+
+        // Notify current assignee
+        task.getAssignments().stream()
+                .filter(TaskAssignment::getIsCurrent)
+                .findFirst()
+                .ifPresent(assignment -> {
+                    notificationService.notify(
+                            assignment.getAssignee(),
+                            NotificationType.SYSTEM,
+                            "Yêu cầu hoàn thành bị từ chối",
+                            "Yêu cầu hoàn thành công việc \"" + task.getTitle() + "\" đã bị từ chối bởi " + user.getFullName() + ". Lý do: " + reason,
+                            task.getId()
+                    );
+                });
+
         return updated;
     }
 
@@ -281,9 +425,8 @@ public class TaskService {
         Task task = getTask(id);
         User currentUser = this.currentUser.getCurrentUser();
 
-        // Only creator or Manager can cancel
-        if (!task.getCreatedBy().getId().equals(currentUser.getId()) && !currentUser.isManager()) {
-            throw new ForbiddenOperationException("Only creator or Manager can cancel this task");
+        if (!canManageTask(task, currentUser)) {
+            throw new ForbiddenOperationException("Chỉ người tạo việc (Leader) hoặc Admin mới có quyền hủy công việc này");
         }
 
         task.setStatus(TaskStatus.CANCELLED);
@@ -293,16 +436,14 @@ public class TaskService {
     }
 
     /**
-     * Update task difficulty (1-5). Only Lead or Manager may set it — it
-     * feeds the KPI task-weight calculation, not something a Member should
-     * self-assign.
+     * Update task difficulty (1-5). Leader or Manager only.
      */
     public Task updateDifficulty(Long id, Difficulty difficulty) {
         Task task = getTask(id);
         User currentUser = this.currentUser.getCurrentUser();
 
-        if (!currentUser.isLead() && !currentUser.isManager()) {
-            throw new ForbiddenOperationException("Only Lead or Manager can set task difficulty");
+        if (!canManageTask(task, currentUser)) {
+            throw new ForbiddenOperationException("Chỉ người tạo việc (Leader) hoặc Admin mới có quyền đặt độ khó");
         }
 
         Map<String, Object> logEntry = new HashMap<>();
@@ -320,16 +461,14 @@ public class TaskService {
     }
 
     /**
-     * Directly push the due date back — Manager only, since a Manager's
-     * extension request self-approves anyway (Scope.md §12.7). Member/Lead
-     * must go through DeadlineExtensionService's request-and-approval flow.
+     * Directly push the due date back — Manager or task creator Leader only.
      */
     public Task extendDeadline(Long id, int daysToAdd, String reason) {
         Task task = getTask(id);
         User currentUser = this.currentUser.getCurrentUser();
 
-        if (!currentUser.isManager()) {
-            throw new ForbiddenOperationException("Only Manager can extend a deadline directly — use the deadline extension request flow instead");
+        if (!canManageTask(task, currentUser)) {
+            throw new ForbiddenOperationException("Chỉ người tạo việc (Leader) hoặc Admin mới có quyền gia hạn trực tiếp deadline");
         }
         if (daysToAdd <= 0) {
             throw new IllegalArgumentException("daysToAdd must be positive");
@@ -395,39 +534,6 @@ public class TaskService {
             createSubtaskTreeFromTemplate(savedTask, taskType);
         }
 
-        // FAST tasks are "self-assigned to Manager" (see validateTaskCreationPermission)
-        // — without an assignment, updateTaskStatus can never find a current
-        // assignee and every status change 403s. OFTEN/MULTI_STEP tasks are
-        // assigned separately by a Lead/Manager via TaskAssignmentController.
-        if (taskType.getTimeCategory() == TimeCategory.FAST && currentUser.isMember()) {
-            User freshCurrentUser = userRepository.findByIdWithLeadAndManager(currentUser.getId())
-                    .orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + currentUser.getId()));
-            User manager = freshCurrentUser.getLead() != null ? freshCurrentUser.getLead().getManager() : null;
-            if (manager != null) {
-                // Scope.md §13.4: a FAST task's group is the creating
-                // Member's group, not the auto-assigned Manager's — a
-                // Manager has no group membership of their own in this
-                // model (only Leads/Members do), so applyTaskGroup's
-                // default "derive from assignee" would leave the task
-                // group-less. Pass the creator's primary group explicitly.
-                Long creatorGroupId = groupMembershipRepository.findPrimaryForMember(freshCurrentUser.getId())
-                        .map(gm -> gm.getGroup().getId())
-                        .orElse(null);
-
-                // Task.builder() sets assignments to a plain new ArrayList
-                // (not a Hibernate-managed lazy collection), and since
-                // savedTask is already in this transaction's persistence
-                // context, re-fetching returns that same identity-mapped
-                // instance — its assignments field never gets refreshed from
-                // the DB. Append the just-created assignment in memory
-                // instead, so the caller's response reflects it directly.
-                TaskAssignment assignment = taskAssignmentService.assignTask(savedTask.getId(), manager.getId(), creatorGroupId);
-                savedTask.getAssignments().add(assignment);
-            }
-            log.warn("Could not auto-assign FAST task {} — creator {} has no manager in their reporting chain",
-                    savedTask.getId(), currentUser.getId());
-        }
-
         return savedTask;
     }
 
@@ -439,8 +545,8 @@ public class TaskService {
         Task task = getTask(id);
         User currentUser = this.currentUser.getCurrentUser();
 
-        if (!task.getCreatedBy().getId().equals(currentUser.getId()) && !currentUser.isManager()) {
-            throw new ForbiddenOperationException("Only creator or Manager can update this task");
+        if (!canManageTask(task, currentUser)) {
+            throw new ForbiddenOperationException("Chỉ người tạo việc (Leader) hoặc Admin mới có quyền chỉnh sửa công việc này");
         }
 
         if (title != null) {
@@ -480,21 +586,14 @@ public class TaskService {
         User currentUser = this.currentUser.getCurrentUser();
 
         Page<Task> page;
-        if (!currentUser.isManager()) {
-            // For non-managers, restrict to tasks they created or are assigned to
-            page = (status != null)
-                    ? taskRepository.findByStatusAndCreator(status, currentUser.getId(), pageable)
-                    : taskRepository.findByCreatedByIdWithEagerLoad(currentUser.getId(), pageable);
+        if (currentUser.isManager()) {
+            page = taskRepository.findByMultipleCriteria(status, taskTypeId, section, dueDateFrom, dueDateTo, search, pageable);
+        } else if (currentUser.isLead()) {
+            page = taskRepository.findForLeadCriteria(currentUser.getId(), status, taskTypeId, section, dueDateFrom, dueDateTo, search, pageable);
         } else {
-            // For managers, apply full filtering
-            page = taskRepository.findByMultipleCriteria(status, taskTypeId, section, dueDateFrom, dueDateTo, pageable);
+            page = taskRepository.findForMemberCriteria(currentUser.getId(), status, taskTypeId, section, dueDateFrom, dueDateTo, search, pageable);
         }
 
-        // These queries JOIN FETCH subtasks (can't also JOIN FETCH
-        // groupSubtasks/assignments/steps — Hibernate rejects fetching more
-        // than one List-typed collection in one query), so touch the rest
-        // here, still inside the transaction, for TaskMapper's
-        // groupSubtasks/subtasks[].steps/currentAssignment fields.
         page.forEach(task -> {
             task.getGroupSubtasks().size();
             task.getSubtasks().forEach(s -> s.getSteps().size());
@@ -549,7 +648,6 @@ public class TaskService {
         List<Task> tasks = taskRepository.findAllById(taskIds);
 
         for (Task task : tasks) {
-            // Validate status transition
             if (task.getStatus() != newStatus) {
                 task.setStatus(newStatus);
                 task.setUpdatedAt(ZonedDateTime.now());
@@ -580,13 +678,13 @@ public class TaskService {
     public Page<Task> advancedSearch(String keyword, TaskStatus status, Integer priority,
                                      Long taskTypeId, LocalDate dueDateFrom, LocalDate dueDateTo,
                                      String section, Boolean hasEstimate, Pageable pageable) {
-        // Use repository method with multiple criteria
         return taskRepository.findByMultipleCriteria(
                 status,
                 taskTypeId,
                 section,
                 dueDateFrom,
                 dueDateTo,
+                keyword,
                 pageable
         );
     }

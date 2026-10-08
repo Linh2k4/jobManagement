@@ -6,6 +6,7 @@ import { Store } from '@ngrx/store';
 import { selectAllTasks, selectTaskLoading, selectTaskStats } from '../../../../store/task/task.selectors';
 import * as TaskActions from '../../../../store/task/task.actions';
 import { TaskCreateModalComponent } from '../../components/task-create-modal/task-create-modal.component';
+import { AuthStore } from '../../../../core/stores/auth.store';
 import { TaskStatus } from '../../../../core/models';
 import { TaskStatusLabelPipe } from '../../../../shared/pipes/task-status-label.pipe';
 
@@ -20,7 +21,7 @@ import { TaskStatusLabelPipe } from '../../../../shared/pipes/task-status-label.
           <h1>Danh sách Công việc</h1>
           <p class="subtitle">Theo dõi tiến độ, phân công và hạn chót các nhiệm vụ</p>
         </div>
-        <button class="btn btn-primary" (click)="createModal.open()">
+        <button class="btn btn-primary" *ngIf="!authStore.isMember()" (click)="createModal.open()">
           <span class="icon">add_task</span>
           <span>Tạo việc mới</span>
         </button>
@@ -64,8 +65,9 @@ import { TaskStatusLabelPipe } from '../../../../shared/pipes/task-status-label.
           <div class="status-wrap">
             <select [(ngModel)]="selectedStatus" (change)="onFilterChange()" class="status-select">
               <option value="">Tất cả trạng thái</option>
-              <option value="PENDING">Chờ xử lý</option>
+              <option value="PENDING">Chưa thực hiện</option>
               <option value="IN_PROGRESS">Đang thực hiện</option>
+              <option value="WAITING_APPROVAL">Đang chờ duyệt</option>
               <option value="DONE">Đã hoàn thành</option>
               <option value="CLOSED_LATE">Hoàn thành trễ</option>
               <option value="CANCELLED">Đã huỷ</option>
@@ -84,7 +86,7 @@ import { TaskStatusLabelPipe } from '../../../../shared/pipes/task-status-label.
         <div *ngIf="!(isLoading$ | async) && (tasks$ | async)?.length === 0" class="empty-state">
           <span class="icon empty-icon">assignment_late</span>
           <p>Không tìm thấy công việc nào phù hợp.</p>
-          <button class="btn btn-primary btn-sm" (click)="createModal.open()">
+          <button class="btn btn-primary btn-sm" *ngIf="!authStore.isMember()" (click)="createModal.open()">
             <span class="icon">add</span> Tạo công việc mới
           </button>
         </div>
@@ -384,6 +386,7 @@ import { TaskStatusLabelPipe } from '../../../../shared/pipes/task-status-label.
 export class TaskListComponent implements OnInit {
   private store = inject(Store);
   private router = inject(Router);
+  authStore = inject(AuthStore);
 
   tasks$ = this.store.select(selectAllTasks);
   isLoading$ = this.store.select(selectTaskLoading);

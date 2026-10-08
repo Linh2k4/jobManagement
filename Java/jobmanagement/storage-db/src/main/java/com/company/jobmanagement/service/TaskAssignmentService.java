@@ -2,6 +2,7 @@ package com.company.jobmanagement.service;
 
 import com.company.jobmanagement.model.entity.*;
 import com.company.jobmanagement.model.enums.NotificationType;
+import com.company.jobmanagement.model.enums.Role;
 import com.company.jobmanagement.exception.ForbiddenOperationException;
 import com.company.jobmanagement.exception.ResourceNotFoundException;
 import com.company.jobmanagement.repository.GroupMembershipRepository;
@@ -18,6 +19,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.ZonedDateTime;
+import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 
@@ -48,33 +50,25 @@ public class TaskAssignmentService {
         Task task = taskRepository.findById(taskId)
                 .orElseThrow(() -> new ResourceNotFoundException("Task not found with id: " + taskId));
 
-        // Fetched fresh (not the SecurityContext's detached copy) with
-        // lead/manager JOIN FETCHed — validateAssignmentDirection may walk
-        // either user's reporting chain, and a lazy proxy off a detached
-        // entity has no session to initialize from.
         User assignee = userRepository.findByIdWithLeadAndManager(assigneeId)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + assigneeId));
         User currentUser = userRepository.findByIdWithLeadAndManager(this.currentUser.getCurrentUserId())
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
-        // Validate assignment direction based on role and task type
-        validateAssignmentDirection(currentUser, assignee, task);
+        // Validate assignment permission based on role: Manager or Creator Lead
+        validateAssignmentPermission(currentUser, assignee, task);
 
         applyTaskGroup(task, assignee, explicitGroupId);
 
-        // Mark previous assignment as non-current — flushed immediately.
-        // Hibernate's default flush order runs insertions before updates, so
-        // without this the new (is_current=true) row's INSERT would execute
-        // before this UPDATE, and the partial unique index on
-        // task_assignments(task_id) WHERE is_current briefly sees two
-        // current rows for the same task and rejects the insert.
-        Optional<TaskAssignment> currentAssignment = taskAssignmentRepository.findCurrentAssignment(taskId);
-        currentAssignment.ifPresent(assignment -> {
-            assignment.setIsCurrent(false);
-            taskAssignmentRepository.saveAndFlush(assignment);
-        });
+        // Check if user is already actively assigned to this task
+        List<TaskAssignment> currentAssignments = taskAssignmentRepository.findCurrentAssignments(taskId);
+        for (TaskAssignment existing : currentAssignments) {
+            if (existing.getAssignee().getId().equals(assigneeId) && Boolean.TRUE.equals(existing.getIsCurrent())) {
+                return existing;
+            }
+        }
 
-        // Create new assignment
+        // Create new active assignment without clearing other active assignees (supporting multiple assignees)
         TaskAssignment newAssignment = TaskAssignment.builder()
                 .task(task)
                 .assignee(assignee)
@@ -83,11 +77,6 @@ public class TaskAssignmentService {
                 .assignedAt(ZonedDateTime.now())
                 .build();
 
-        // Flushed explicitly: callers may immediately re-fetch the task
-        // afterward, and Hibernate's auto-flush heuristic doesn't reliably
-        // fire for a query that doesn't itself join task_assignments —
-        // without this the caller can see a response with no current
-        // assignment despite this insert having happened.
         TaskAssignment saved = taskAssignmentRepository.saveAndFlush(newAssignment);
 
         // Send notification to assignee asynchronously
@@ -95,13 +84,51 @@ public class TaskAssignmentService {
             notificationService.notify(
                 assignee,
                 NotificationType.TASK_ASSIGNED,
-                "Task Assigned",
-                "Task \"" + task.getTitle() + "\" has been assigned to you",
+                "Công việc mới được phân công",
+                "Công việc \"" + task.getTitle() + "\" đã được phân công cho bạn",
                 task.getId()
             )
         );
 
         return saved;
+    }
+
+    public void unassignTask(Long taskId) {
+        Task task = taskRepository.findById(taskId)
+                .orElseThrow(() -> new ResourceNotFoundException("Task not found with id: " + taskId));
+        User currentUser = userRepository.findByIdWithLeadAndManager(this.currentUser.getCurrentUserId())
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+
+        if (!currentUser.isManager() && !(currentUser.isLead() && task.getCreatedBy() != null && task.getCreatedBy().getId().equals(currentUser.getId()))) {
+            throw new ForbiddenOperationException("Chỉ người tạo việc (Leader) hoặc Admin mới có quyền xóa người tham gia");
+        }
+
+        List<TaskAssignment> currentAssignments = taskAssignmentRepository.findCurrentAssignments(taskId);
+        for (TaskAssignment assignment : currentAssignments) {
+            assignment.setIsCurrent(false);
+            taskAssignmentRepository.saveAndFlush(assignment);
+        }
+        log.info("Task {} all assignments cleared", taskId);
+    }
+
+    public void unassignUserFromTask(Long taskId, Long assigneeId) {
+        Task task = taskRepository.findById(taskId)
+                .orElseThrow(() -> new ResourceNotFoundException("Task not found with id: " + taskId));
+        User currentUser = userRepository.findByIdWithLeadAndManager(this.currentUser.getCurrentUserId())
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+
+        if (!currentUser.isManager() && !(currentUser.isLead() && task.getCreatedBy() != null && task.getCreatedBy().getId().equals(currentUser.getId()))) {
+            throw new ForbiddenOperationException("Chỉ người tạo việc (Leader) hoặc Admin mới có quyền xóa người tham gia");
+        }
+
+        List<TaskAssignment> currentAssignments = taskAssignmentRepository.findCurrentAssignments(taskId);
+        for (TaskAssignment assignment : currentAssignments) {
+            if (assignment.getAssignee().getId().equals(assigneeId)) {
+                assignment.setIsCurrent(false);
+                taskAssignmentRepository.saveAndFlush(assignment);
+                log.info("Task {} unassigned from user {}", taskId, assigneeId);
+            }
+        }
     }
 
     /**
@@ -126,59 +153,18 @@ public class TaskAssignmentService {
         }
     }
 
-    /**
-     * A Member's direct manager_id is always null by design (User hierarchy:
-     * MANAGER → LEAD has manager_id set → MEMBER has lead_id set, not
-     * manager_id) — their manager is found by walking through their Lead.
-     */
-    private User resolveManagerOf(User member) {
-        return member.getLead() != null ? member.getLead().getManager() : null;
-    }
-
-    private void validateAssignmentDirection(User currentUser, User assignee, Task task) {
-        TaskType taskType = task.getTaskType();
-
-        switch (taskType.getTimeCategory()) {
-            case FAST:
-                // FAST: Member can assign to their own manager (via their Lead) only
-                if (currentUser.isMember()) {
-                    User manager = resolveManagerOf(currentUser);
-                    if (manager != null && assignee.getId().equals(manager.getId())) {
-                        return;
-                    }
-                } else if (currentUser.isManager()) {
-                    // Manager can assign FAST tasks to any Member under them
-                    if (assignee.isMember()) {
-                        User assigneeManager = resolveManagerOf(assignee);
-                        if (assigneeManager != null && assigneeManager.getId().equals(currentUser.getId())) {
-                            return;
-                        }
-                    }
-                }
-                throw new ForbiddenOperationException("Invalid assignment direction for FAST task");
-
-            case OFTEN:
-                // OFTEN: Lead or Manager can assign to Members in their team
-                if (currentUser.isLead() || currentUser.isManager()) {
-                    if (assignee.isMember() && assignee.getLead().getId().equals(currentUser.getId())) {
-                        return;
-                    }
-                }
-                throw new ForbiddenOperationException("Invalid assignment direction for OFTEN task");
-
-            case MULTI_STEP:
-                // MULTI_STEP: Lead assigns to Members in their team; Manager can assign to any
-                if (currentUser.isLead()) {
-                    if (assignee.isMember() && assignee.getLead().getId().equals(currentUser.getId())) {
-                        return;
-                    }
-                } else if (currentUser.isManager()) {
-                    if (assignee.isMember() || assignee.isLead()) {
-                        return;
-                    }
-                }
-                throw new ForbiddenOperationException("Invalid assignment direction for MULTI_STEP task");
+    private void validateAssignmentPermission(User currentUser, User assignee, Task task) {
+        if (currentUser.isManager()) {
+            return; // Manager has full permission to assign anyone
         }
+        if (currentUser.isLead() && task.getCreatedBy() != null && task.getCreatedBy().getId().equals(currentUser.getId())) {
+            // Leader can only assign to MEMBERs, NOT to other LEADs or MANAGERs
+            if (assignee.getRole() != Role.MEMBER) {
+                throw new ForbiddenOperationException("Trưởng nhóm chỉ có quyền phân công cho nhân viên (MEMBER), không được phân công cho Leader khác hoặc Admin");
+            }
+            return;
+        }
+        throw new ForbiddenOperationException("Chỉ người tạo việc (Leader) hoặc Admin mới có quyền phân công người tham gia công việc này");
     }
 
     @Transactional(readOnly = true)
@@ -201,7 +187,6 @@ public class TaskAssignmentService {
 
     /**
      * Reassign a task to a different user.
-     * Only the current assignee or manager can reassign.
      */
     public TaskAssignment reassignTask(Long taskId, Long newAssigneeId) {
         return reassignTask(taskId, newAssigneeId, null);
@@ -216,25 +201,25 @@ public class TaskAssignmentService {
 
         User currentUser = this.currentUser.getCurrentUser();
 
-        // Check current assignment and permissions
-        TaskAssignment currentAssignment = taskAssignmentRepository.findCurrentAssignment(taskId)
-                .orElseThrow(() -> new ResourceNotFoundException("Task has no current assignment"));
+        // Check permissions: Manager, task creator (Lead), or current assignee
+        boolean isCreatorOrManager = currentUser.isManager() || (currentUser.isLead() && task.getCreatedBy() != null && task.getCreatedBy().getId().equals(currentUser.getId()));
 
-        if (!currentAssignment.getAssignee().getId().equals(currentUser.getId()) && !currentUser.isManager()) {
-            throw new ForbiddenOperationException("Only current assignee or manager can reassign this task");
+        TaskAssignment currentAssignment = taskAssignmentRepository.findCurrentAssignment(taskId).orElse(null);
+        if (currentAssignment != null) {
+            boolean isCurrentAssignee = currentAssignment.getAssignee().getId().equals(currentUser.getId());
+            if (!isCreatorOrManager && !isCurrentAssignee) {
+                throw new ForbiddenOperationException("Chỉ người tạo việc (Leader), Admin hoặc người đang thực hiện mới có quyền chuyển giao công việc này");
+            }
+        } else if (!isCreatorOrManager) {
+            throw new ForbiddenOperationException("Chỉ người tạo việc (Leader) hoặc Admin mới có quyền phân công công việc này");
         }
-
-        // Validate new assignment direction
-        validateAssignmentDirection(currentUser, newAssignee, task);
 
         applyTaskGroup(task, newAssignee, explicitGroupId);
 
-        // Mark current as non-current — flushed immediately, same reason as
-        // in assignTask() (Hibernate would otherwise insert the new
-        // is_current=true row before this update, tripping the partial
-        // unique index).
-        currentAssignment.setIsCurrent(false);
-        taskAssignmentRepository.saveAndFlush(currentAssignment);
+        if (currentAssignment != null) {
+            currentAssignment.setIsCurrent(false);
+            taskAssignmentRepository.saveAndFlush(currentAssignment);
+        }
 
         // Create new assignment
         TaskAssignment newAssignment = TaskAssignment.builder()
@@ -245,21 +230,16 @@ public class TaskAssignmentService {
                 .assignedAt(ZonedDateTime.now())
                 .build();
 
-        // Flushed explicitly: callers may immediately re-fetch the task
-        // afterward, and Hibernate's auto-flush heuristic doesn't reliably
-        // fire for a query that doesn't itself join task_assignments —
-        // without this the caller can see a response with no current
-        // assignment despite this insert having happened.
         TaskAssignment saved = taskAssignmentRepository.saveAndFlush(newAssignment);
-        log.info("Task reassigned: taskId={}, from={}, to={}", taskId, currentAssignment.getAssignee().getId(), newAssigneeId);
+        log.info("Task reassigned: taskId={}, to={}", taskId, newAssigneeId);
 
         // Send notification to new assignee
         CompletableFuture.runAsync(() ->
             notificationService.notify(
                 newAssignee,
                 NotificationType.TASK_ASSIGNED,
-                "Task Reassigned",
-                "Task \"" + task.getTitle() + "\" has been reassigned to you",
+                "Công việc mới được chuyển giao",
+                "Công việc \"" + task.getTitle() + "\" đã được giao cho bạn",
                 task.getId()
             )
         );

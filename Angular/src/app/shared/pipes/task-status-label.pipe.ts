@@ -1,9 +1,10 @@
 import { Pipe, PipeTransform } from '@angular/core';
 
 const TASK_STATUS_LABELS: Record<string, string> = {
-  PENDING: 'Chờ xử lý',
+  PENDING: 'Chưa thực hiện',
   IN_PROGRESS: 'Đang thực hiện',
-  DONE: 'Hoàn thành',
+  WAITING_APPROVAL: 'Đang chờ duyệt',
+  DONE: 'Đã hoàn thành',
   CLOSED_LATE: 'Hoàn thành trễ',
   CANCELLED: 'Đã huỷ'
 };

@@ -3,6 +3,7 @@ package com.company.jobmanagement.model.enums;
 public enum TaskStatus {
     PENDING,
     IN_PROGRESS,
+    WAITING_APPROVAL,
     DONE,
     CLOSED_LATE,  // Completed after deadline
     CANCELLED;
@@ -13,6 +14,10 @@ public enum TaskStatus {
 
     public boolean isInProgress() {
         return this == IN_PROGRESS;
+    }
+
+    public boolean isWaitingApproval() {
+        return this == WAITING_APPROVAL;
     }
 
     public boolean isDone() {

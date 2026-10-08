@@ -130,6 +130,47 @@ export class TaskService {
   }
 
   /**
+   * Submit task for completion approval
+   * POST /tasks/{id}/submit-completion
+   */
+  submitCompletion(id: number): Observable<ApiEnvelope<Task>> {
+    return this.http.post<ApiEnvelope<Task>>(`${this.apiUrl}/${id}/submit-completion`, {});
+  }
+
+  /**
+   * Approve task completion (Leader / Admin)
+   * POST /tasks/{id}/approve-completion
+   */
+  approveCompletion(id: number, note?: string): Observable<ApiEnvelope<Task>> {
+    return this.http.post<ApiEnvelope<Task>>(`${this.apiUrl}/${id}/approve-completion`, { note });
+  }
+
+  /**
+   * Reject task completion (Leader / Admin)
+   * POST /tasks/{id}/reject-completion
+   */
+  rejectCompletion(id: number, reason: string): Observable<ApiEnvelope<Task>> {
+    return this.http.post<ApiEnvelope<Task>>(`${this.apiUrl}/${id}/reject-completion`, { reason });
+  }
+
+  /**
+   * Assign task to user
+   * POST /tasks/{taskId}/assignments
+   */
+  assignTask(taskId: number, assigneeId: number, groupId?: number): Observable<any> {
+    return this.http.post(`${this.apiUrl}/${taskId}/assignments`, { assigneeId, groupId });
+  }
+
+  /**
+   * Unassign user or all users from task
+   * DELETE /tasks/{taskId}/assignments
+   */
+  unassignTask(taskId: number, assigneeId?: number): Observable<any> {
+    const url = assigneeId ? `${this.apiUrl}/${taskId}/assignments?assigneeId=${assigneeId}` : `${this.apiUrl}/${taskId}/assignments/current`;
+    return this.http.delete(url);
+  }
+
+  /**
    * Delete task
    * DELETE /tasks/{id}
    */

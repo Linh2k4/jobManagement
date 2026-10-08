@@ -64,7 +64,7 @@ public class UserController extends BaseController {
      * List every user (Manager only) — backs the Nhân sự (HR) admin screen.
      */
     @GetMapping
-    @PreAuthorize("hasRole('MANAGER')")
+    @PreAuthorize("hasAnyRole('MANAGER', 'LEAD')")
     @Operation(
         summary = "List all users",
         description = "Retrieve every user account (Manager only)",

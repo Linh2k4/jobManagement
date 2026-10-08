@@ -1,16 +1,18 @@
 import { Component, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
+import { AuthStore } from '../../../../core/stores/auth.store';
 import { KanbanBoardComponent } from '../../components/kanban-board/kanban-board.component';
 import { TaskListComponent } from '../task-list/task-list.component';
 import { TimelineViewComponent } from '../../components/timeline-view/timeline-view.component';
+import { TaskCreateModalComponent } from '../../components/task-create-modal/task-create-modal.component';
 
 type BoardTab = 'kanban' | 'timeline' | 'list';
 
 @Component({
   selector: 'app-task-board',
   standalone: true,
-  imports: [CommonModule, KanbanBoardComponent, TaskListComponent, TimelineViewComponent],
+  imports: [CommonModule, KanbanBoardComponent, TaskListComponent, TimelineViewComponent, TaskCreateModalComponent],
   template: `
     <div class="board-page animate-fade-in">
       <!-- PAGE HEADER -->
@@ -31,7 +33,7 @@ type BoardTab = 'kanban' | 'timeline' | 'list';
               <span class="icon">view_list</span> Danh sách
             </button>
           </div>
-          <button class="btn btn-primary" (click)="router.navigate(['/tasks/new'])">
+          <button class="btn btn-primary" *ngIf="!authStore.isMember()" (click)="createModal.open()">
             <span class="icon">add</span> Thêm công việc
           </button>
         </div>
@@ -43,6 +45,8 @@ type BoardTab = 'kanban' | 'timeline' | 'list';
         <app-timeline-view *ngIf="tab === 'timeline'"></app-timeline-view>
         <app-task-list *ngIf="tab === 'list'"></app-task-list>
       </div>
+
+      <app-task-create-modal #createModal></app-task-create-modal>
     </div>
   `,
   styles: [`
@@ -114,5 +118,6 @@ type BoardTab = 'kanban' | 'timeline' | 'list';
 })
 export class TaskBoardComponent {
   router = inject(Router);
+  authStore = inject(AuthStore);
   tab: BoardTab = 'kanban';
 }

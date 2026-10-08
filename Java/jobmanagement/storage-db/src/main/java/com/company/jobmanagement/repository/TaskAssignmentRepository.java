@@ -17,6 +17,9 @@ public interface TaskAssignmentRepository extends JpaRepository<TaskAssignment, 
     @Query("SELECT ta FROM TaskAssignment ta WHERE ta.task.id = :taskId AND ta.isCurrent = true")
     Optional<TaskAssignment> findCurrentAssignment(@Param("taskId") Long taskId);
 
+    @Query("SELECT ta FROM TaskAssignment ta WHERE ta.task.id = :taskId AND ta.isCurrent = true")
+    List<TaskAssignment> findCurrentAssignments(@Param("taskId") Long taskId);
+
     @Query("SELECT ta FROM TaskAssignment ta WHERE ta.task.id = :taskId ORDER BY ta.assignedAt DESC")
     List<TaskAssignment> findAssignmentHistory(@Param("taskId") Long taskId);
 
