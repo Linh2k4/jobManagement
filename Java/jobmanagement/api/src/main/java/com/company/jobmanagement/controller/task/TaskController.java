@@ -551,7 +551,11 @@ public class TaskController extends BaseController {
             stepTotal = toCountMap(stepRepository.countByTaskIds(taskIds));
             stepDone = toCountMap(stepRepository.countDoneByTaskIds(taskIds));
             currentAssignments = taskAssignmentRepository.findCurrentAssignmentsForTasks(taskIds).stream()
-                    .collect(Collectors.toMap(a -> a.getTask().getId(), a -> a));
+                    .collect(Collectors.toMap(
+                            a -> a.getTask().getId(),
+                            a -> a,
+                            (existing, replacement) -> existing
+                    ));
         }
 
         List<KanbanTaskResponse> todo = new ArrayList<>();
